@@ -50,9 +50,9 @@
             </div>
           </div>
           <div class="watching">
-            <div class="row"><span class="ico">👁</span><span id="seeing">team slide · Series A deck</span></div>
-            <div class="row"><span class="ico">🎙</span><span class="quote" id="hearing">"i don't trust this CAC number"</span></div>
-            <div class="row signal"><span class="signal-dot"></span><span id="signal">capturing signal</span></div>
+            <div class="row hidden" id="seeing-row"><span class="ico">👁</span><span id="seeing"></span></div>
+            <div class="row hidden" id="hearing-row"><span class="ico">🎙</span><span class="quote" id="hearing"></span></div>
+            <div class="row signal"><span class="signal-dot"></span><span id="signal">waiting…</span></div>
           </div>
         </section>
 
@@ -68,6 +68,14 @@
             <span class="label">memory writes <span class="badge live">live</span></span>
           </div>
           <ul class="feed" id="writes"></ul>
+        </section>
+
+        <!-- LIVE THOUGHTS -->
+        <section class="card">
+          <div class="card-head">
+            <span class="label">live thoughts <span class="badge live">live</span></span>
+          </div>
+          <ul class="thoughts" id="thoughts"></ul>
         </section>
 
         <!-- ARTIFACTS -->
