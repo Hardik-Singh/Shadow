@@ -1,0 +1,13 @@
+{
+  "name": "shadow",
+  "productName": "Shadow",
+  "version": "0.0.1",
+  "description": "Always-on agent overlay HUD",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^32.0.0"
+  }
+}
