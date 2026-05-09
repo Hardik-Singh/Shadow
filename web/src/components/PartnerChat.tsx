@@ -4,7 +4,8 @@ import { Avatar } from './Avatars';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { ArrowUp } from 'lucide-react';
+import { ArrowUp, Loader2 } from 'lucide-react';
+import { askShadow, ShadowCitation } from '@/lib/chat-api';
 
 type Ctx = {
   open: (teammateId: string) => void;
@@ -14,7 +15,12 @@ type Ctx = {
 const PartnerChatCtx = createContext<Ctx>({ open: () => {}, close: () => {} });
 export const usePartnerChat = () => useContext(PartnerChatCtx);
 
-type Exchange = { q: string; a: string };
+type Exchange = {
+  q: string;
+  a: string;
+  confidence?: 'low' | 'medium' | 'high';
+  citations?: ShadowCitation[];
+};
 
 const FALLBACK = (t: Teammate, q: string): string => {
   const lower = q.toLowerCase();
@@ -31,6 +37,7 @@ export function PartnerChatProvider({ children }: { children: ReactNode }) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [thread, setThread] = useState<Exchange[]>([]);
   const [value, setValue] = useState('');
+  const [pending, setPending] = useState(false);
 
   const teammate = activeId ? teammateById(activeId) : null;
 
@@ -39,16 +46,28 @@ export function PartnerChatProvider({ children }: { children: ReactNode }) {
     setActiveId(id);
     setThread([]);
     setValue('');
+    setPending(false);
   };
   const close = () => setActiveId(null);
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!teammate) return;
     const q = value.trim();
-    if (!q) return;
-    setThread((t) => [...t, { q, a: FALLBACK(teammate, q) }]);
+    if (!q || pending) return;
     setValue('');
+    setPending(true);
+    const reply = await askShadow({ partnerId: teammate.id, question: q });
+    setPending(false);
+    setThread((t) => [
+      ...t,
+      {
+        q,
+        a: reply?.answer ?? FALLBACK(teammate, q),
+        confidence: reply?.confidence,
+        citations: reply?.citations,
+      },
+    ]);
   };
 
   return (
@@ -86,6 +105,21 @@ export function PartnerChatProvider({ children }: { children: ReactNode }) {
                         <span className="mt-0.5 w-4 shrink-0 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-accent">{teammate.initials}</span>
                         <span>{x.a}</span>
                       </div>
+                      {x.citations && x.citations.length > 0 && (
+                        <ul className="ml-6 mt-2 space-y-1">
+                          {x.citations.map((c, j) => (
+                            <li key={j} className="text-[11.5px] leading-snug text-muted-foreground/85">
+                              <span className="mr-1 font-mono text-[10px] text-muted-foreground/60">[{j + 1}]</span>
+                              <span>{c.snippet}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {x.confidence && (
+                        <div className="ml-6 mt-1.5 text-[11px] text-muted-foreground/70">
+                          confidence: {x.confidence}
+                        </div>
+                      )}
                     </div>
                   ))
                 )}
@@ -97,10 +131,11 @@ export function PartnerChatProvider({ children }: { children: ReactNode }) {
                   placeholder={`Ask ${teammate.name.split(' ')[0]}'s shadow…`}
                   value={value}
                   onChange={(e) => setValue(e.target.value)}
+                  disabled={pending}
                   autoFocus
                 />
-                <Button type="submit" size="sm">
-                  Ask <ArrowUp className="h-3.5 w-3.5" />
+                <Button type="submit" size="sm" disabled={pending}>
+                  {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <>Ask <ArrowUp className="h-3.5 w-3.5" /></>}
                 </Button>
               </form>
             </>
