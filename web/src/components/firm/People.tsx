@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { people, Person, companyById } from '../../mock/data';
 import { cn } from '@/lib/utils';
+import { useArtifacts } from '@/lib/use-artifacts';
+import { relationCountsForPerson } from '@/lib/relations';
 
 const ROLE_TABS: { id: Person['role'] | 'all'; label: string }[] = [
   { id: 'all',      label: 'All' },
@@ -11,6 +13,7 @@ const ROLE_TABS: { id: Person['role'] | 'all'; label: string }[] = [
 
 export default function People({ onOpenDeal }: { onOpenDeal: (id: string) => void }) {
   const [tab, setTab] = useState<Person['role'] | 'all'>('all');
+  const artifacts = useArtifacts();
   const list = tab === 'all' ? people : people.filter((p) => p.role === tab);
 
   return (
@@ -41,6 +44,7 @@ export default function People({ onOpenDeal }: { onOpenDeal: (id: string) => voi
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {list.map((p) => {
           const co = p.companyId ? companyById(p.companyId) : null;
+          const relations = relationCountsForPerson(p, artifacts);
           return (
             <button
               key={p.id}
@@ -67,6 +71,19 @@ export default function People({ onOpenDeal }: { onOpenDeal: (id: string) => voi
                 <div className="mt-2 line-clamp-2 text-[12.5px] leading-snug text-foreground/75">{p.blurb}</div>
                 <div className="mt-2.5 text-[11px] text-muted-foreground/70">
                   Last interaction · {p.lastInteraction}
+                </div>
+                <div className="mt-2 flex flex-wrap gap-1.5 text-[10.5px] text-muted-foreground">
+                  <span className="rounded-md bg-secondary px-1.5 py-0.5">
+                    {relations.artifacts} artifacts
+                  </span>
+                  <span className="rounded-md bg-secondary px-1.5 py-0.5">
+                    {relations.meetings} meetings
+                  </span>
+                  {relations.teammates > 0 && (
+                    <span className="rounded-md bg-secondary px-1.5 py-0.5">
+                      {relations.teammates} shadows
+                    </span>
+                  )}
                 </div>
               </div>
             </button>
