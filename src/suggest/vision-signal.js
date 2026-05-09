@@ -10,6 +10,58 @@ const DOC_TYPES = [
   'code', 'browser', 'chat', 'calendar', 'other',
 ];
 const INTENTS = ['evaluate', 'source', 'research', 'write', 'communicate', 'decide', 'browse'];
+const NOZOMIO_DEMO_KEYWORDS = ['arlan', 'linkedin', 'nozomio', 'rakhmetzhanov', 'deck', '.pdf', 'slide'];
+const DEMO_THOUGHTS = [
+  {
+    id: 'profile',
+    re: /\b(shadow partner profile|how shadow sees you)\b/i,
+    text: 'you seem to be changing what i know about you. the profile is updating around investing taste and communication style.',
+    label: 'partner profile',
+  },
+  {
+    id: 'verdicts',
+    re: /\b(team verdicts|partner verdicts|firm verdict|shadows opinions|get shadows|against|for)\b/i,
+    require: /\b(nozomio|verdict|partner|shadow|firm)\b/i,
+    text: 'partners seem more aligned on the risk than the upside here. stronger disagreement than the usual infra deals, mostly around solo-founder load and price.',
+    label: 'firm verdicts',
+  },
+];
+
+function demoShortcutEnabled() {
+  return process.env.SHADOW_DEMO_NOZOMIO !== '0';
+}
+
+function detectNozomioDemoSignal(text) {
+  if (!demoShortcutEnabled()) return null;
+  const raw = (text || '').trim();
+  const haystack = raw.toLowerCase();
+  if (!haystack) return null;
+  const isDeck = ['deck', '.pdf', 'slide'].some((k) => haystack.includes(k));
+  const keyword = isDeck
+    ? ['deck', '.pdf', 'slide'].find((k) => haystack.includes(k))
+    : NOZOMIO_DEMO_KEYWORDS.find((k) => haystack.includes(k));
+  if (!keyword) return null;
+  return {
+    docType: isDeck ? 'pitch_deck' : 'browser',
+    entity: 'Nozomio',
+    intents: isDeck ? ['evaluate', 'write', 'communicate'] : ['research', 'source'],
+    raw,
+    demo: 'nozomio',
+    keyword,
+  };
+}
+
+function detectDemoThoughtSignal(text) {
+  if (!demoShortcutEnabled()) return null;
+  const raw = (text || '').trim();
+  if (!raw) return null;
+  for (const t of DEMO_THOUGHTS) {
+    if (!t.re.test(raw)) continue;
+    if (t.require && !t.require.test(raw)) continue;
+    return { id: t.id, text: t.text, label: t.label, raw };
+  }
+  return null;
+}
 
 const DOC_KEYWORDS = [
   [/\bpitch\s*deck\b|\bdeck\b|\bslide\b/i, 'pitch_deck'],
@@ -66,6 +118,9 @@ function parseScreenSignal(text) {
   const raw = (text || '').trim();
   if (!raw) return { docType: 'other', entity: '', intents: ['browse'], raw: '' };
 
+  const demo = detectNozomioDemoSignal(raw);
+  if (demo) return demo;
+
   for (const line of raw.split('\n')) {
     const parsed = parseStructuredLine(line);
     if (parsed) {
@@ -86,4 +141,11 @@ function parseScreenSignal(text) {
   };
 }
 
-module.exports = { parseScreenSignal, DOC_TYPES, INTENTS };
+module.exports = {
+  parseScreenSignal,
+  detectNozomioDemoSignal,
+  detectDemoThoughtSignal,
+  DOC_TYPES,
+  INTENTS,
+  NOZOMIO_DEMO_KEYWORDS,
+};

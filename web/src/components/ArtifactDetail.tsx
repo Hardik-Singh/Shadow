@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react';
 import { Artifact, Citation, teammateById } from '../mock/data';
+import { useArtifacts } from '../lib/use-artifacts';
 import VerdictPill from './VerdictPill';
 import SourceChips from './SourceChips';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
@@ -13,60 +15,75 @@ type Props = {
 };
 
 export default function ArtifactDetail({ artifact, onClose, onOpenInFirm }: Props) {
-  const author = artifact ? teammateById(artifact.authorId) : null;
+  const [selected, setSelected] = useState<Artifact | null>(null);
+  const all = useArtifacts();
+  const current = selected ?? artifact;
+  const author = current ? teammateById(current.authorId) : null;
+  const related = current
+    ? all
+        .filter((a) => a.id !== current.id && a.company === current.company)
+        .sort((a, b) => relatedRank(a) - relatedRank(b))
+        .slice(0, 4)
+    : [];
+
+  useEffect(() => {
+    setSelected(null);
+  }, [artifact?.id]);
 
   return (
     <Sheet open={!!artifact} onOpenChange={(open) => !open && onClose()}>
       <SheetContent className="flex flex-col gap-5 overflow-y-auto">
-        {artifact && (
+        {current && (
           <>
             <header>
               <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                <VerdictPill verdict={artifact.verdict} />
-                <span className="font-medium text-accent">{artifact.type}</span>
+                <VerdictPill verdict={current.verdict} />
+                <span className="font-medium text-accent">{current.type}</span>
               </div>
               <h2 className="mt-3 font-serif text-[26px] leading-tight tracking-tight">
-                {artifact.company}
+                {current.company}
               </h2>
               <div className="mt-1.5 text-[12.5px] text-muted-foreground">
-                {author?.name} · {artifact.time}
+                {author?.name} · {current.time}
               </div>
             </header>
 
-            {artifact.read && (
-              <p className="text-[14.5px] leading-relaxed text-foreground/90">{artifact.read}</p>
+            {current.read && (
+              <p className="text-[14.5px] leading-relaxed text-foreground/90">{current.read}</p>
             )}
 
-            {artifact.bodyKind === 'email' && artifact.email ? (
-              <EmailThread email={artifact.email} />
-            ) : artifact.bodyKind === 'slack' && artifact.slack ? (
-              <SlackThread slack={artifact.slack} />
-            ) : artifact.bodyKind === 'html' ? (
+            {current.bodyKind === 'email' && current.email ? (
+              <EmailThread email={current.email} />
+            ) : current.bodyKind === 'slack' && current.slack ? (
+              <SlackThread slack={current.slack} />
+            ) : current.bodyKind === 'html' ? (
               <div
                 className="artifact-html text-[13.5px] leading-relaxed text-foreground/90 [&_h2]:mt-5 [&_h2]:mb-1.5 [&_h2]:text-[14px] [&_h2]:font-semibold [&_h2]:tracking-tight [&_h3]:mt-4 [&_h3]:mb-1 [&_h3]:text-[13px] [&_h3]:font-semibold [&_p]:my-1.5 [&_ul]:my-1.5 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-1.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5 [&_a]:text-accent [&_a]:underline [&_a]:underline-offset-2 [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-3 [&_blockquote]:text-muted-foreground [&_sup_a]:no-underline [&_sup]:text-[10px] [&_sup]:text-accent"
-                dangerouslySetInnerHTML={{ __html: artifact.body }}
+                dangerouslySetInnerHTML={{ __html: current.body }}
               />
             ) : (
               <p className="whitespace-pre-wrap text-[13.5px] leading-relaxed text-muted-foreground">
-                {artifact.body}
+                {current.body}
               </p>
             )}
 
-            {artifact.flags && artifact.flags.length > 0 && (
+            {current.flags && current.flags.length > 0 && (
               <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-2.5 text-[12px] text-amber-700 dark:text-amber-400">
                 <div className="flex items-center gap-1.5 font-medium">
                   <AlertTriangle className="h-3.5 w-3.5" />
                   Caveats
                 </div>
                 <ul className="mt-1 list-disc pl-5">
-                  {artifact.flags.map((f, i) => <li key={i}>{f}</li>)}
+                  {current.flags.map((f, i) => <li key={i}>{f}</li>)}
                 </ul>
               </div>
             )}
 
-            <SourceChips sources={artifact.sources} />
+            <SourceChips sources={current.sources} />
 
-            <CitationsList citations={artifact.citations} />
+            <CitationsList citations={current.citations} />
+
+            <RelatedArtifacts artifacts={related} onOpen={setSelected} />
 
             <Separator />
 
@@ -74,7 +91,7 @@ export default function ArtifactDetail({ artifact, onClose, onOpenInFirm }: Prop
               <Button variant="outline" size="sm">Edit</Button>
               <Button variant="outline" size="sm">Regenerate</Button>
               {onOpenInFirm && (
-                <Button size="sm" className="ml-auto" onClick={() => onOpenInFirm(artifact)}>
+                <Button size="sm" className="ml-auto" onClick={() => onOpenInFirm(current)}>
                   Open in Firm Brain <ArrowUpRight className="h-3.5 w-3.5" />
                 </Button>
               )}
@@ -83,6 +100,44 @@ export default function ArtifactDetail({ artifact, onClose, onOpenInFirm }: Prop
         )}
       </SheetContent>
     </Sheet>
+  );
+}
+
+function relatedRank(a: Artifact) {
+  if (a.id === 'n8') return 0;
+  if (a.id === 'n7') return 1;
+  if (a.id === 'n10') return 2;
+  if (a.id === 'n6') return 3;
+  if (a.id === 'n11') return 4;
+  if (a.id === 'n12') return 5;
+  if (a.id === 'n9') return 6;
+  if (a.id === 'n4') return 7;
+  return 10;
+}
+
+function RelatedArtifacts({ artifacts, onOpen }: { artifacts: Artifact[]; onOpen: (a: Artifact) => void }) {
+  if (artifacts.length === 0) return null;
+  return (
+    <section>
+      <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+        Related artifacts
+      </div>
+      <div className="grid grid-cols-1 gap-2">
+        {artifacts.map((a) => (
+          <button
+            key={a.id}
+            className="rounded-lg border border-border bg-card p-3 text-left transition-colors hover:border-foreground/20 hover:bg-secondary/40"
+            onClick={() => onOpen(a)}
+          >
+            <div className="flex items-center gap-2 text-[12px]">
+              <span className="font-medium text-accent">{a.type}</span>
+              <span className="ml-auto text-[11px] text-muted-foreground">{a.time}</span>
+            </div>
+            <div className="mt-1 line-clamp-2 text-[12.5px] leading-snug text-muted-foreground">{a.read}</div>
+          </button>
+        ))}
+      </div>
+    </section>
   );
 }
 

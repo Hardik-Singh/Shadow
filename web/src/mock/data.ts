@@ -66,6 +66,121 @@ export const initialMemory: MemoryEntry[] = [
   { id: 'm9', source: 'file',   text: 'Volt AI one-pager ingested · 3 pages',                                          time: '3 hr ago'   },
   { id: 'm10', source: 'screen', text: 'Bolt Robotics financials · 12 sec dwell · closed tab',                         time: '5 hr ago'   },
   { id: 'm11', source: 'voice',  text: '"hardware dilution risk — never works the way the deck says"',                 time: '5 hr ago'   },
+  { id: 'm12', source: 'voice',  text: '"infra is the only place i actually understand the moat"',                     time: '6 hr ago'   },
+  { id: 'm13', source: 'screen', text: 'LinkedIn search "ex-Stripe infra" · 4 sessions this week',                     time: '1 day ago'  },
+  { id: 'm14', source: 'voice',  text: '"if they\'ve worked together 4+ years i don\'t worry about cofounder split"',  time: '1 day ago'  },
+  { id: 'm15', source: 'voice',  text: '"two founders who met at YC last quarter — that\'s a hard pass"',              time: '1 day ago'  },
+  { id: 'm16', source: 'voice',  text: '"paying design partners > LOIs every time"',                                   time: '2 days ago' },
+  { id: 'm17', source: 'screen', text: 'Stripe alumni deck · burn-vs-milestone table · 3 min dwell',                   time: '2 days ago' },
+  { id: 'm18', source: 'voice',  text: '"if your CTO can\'t tell me cost-per-token off the top of their head, i\'m out"', time: '3 days ago' },
+  { id: 'm19', source: 'file',   text: 'Annotated 2017 Snowflake memo · 14 highlights · re-opened twice',              time: '3 days ago' },
+  { id: 'm20', source: 'voice',  text: '"another consumer copilot — i don\'t see the wedge"',                          time: '4 days ago' },
+  { id: 'm21', source: 'screen', text: 'Pre-Series-A ARR filter set to ≥ $250k · saved view',                          time: '4 days ago' },
+  { id: 'm22', source: 'voice',  text: '"hospital procurement is a year of nothing, i keep saying it"',                time: '5 days ago' },
+  { id: 'm23', source: 'screen', text: '3-year burn model · 22 min dwell · scrolled milestone column 6×',              time: '6 days ago' },
+  { id: 'm24', source: 'voice',  text: '"write it lowercase, direct, no formalities — end with the point"',             time: '1 wk ago'   },
+  { id: 'm25', source: 'file',   text: 'edited founder email: removed "hope you are well", cut 42%, added one clear ask', time: '1 wk ago'   },
+];
+
+/* ── how-shadow-sees-you: highlightable segments ──────────────────────── */
+
+export type SummarySegment = {
+  id: string;
+  /** exact substring inside model.summaryParagraph (must match once) */
+  quote: string;
+  /** plain-language restatement of what Shadow believes about you */
+  claim: string;
+  /** memory ids that justify this claim */
+  memoryIds: string[];
+  /** confidence 0–100 */
+  confidence: number;
+};
+
+export const summarySegments: SummarySegment[] = [
+  {
+    id: 's1',
+    quote: 'technical founders shipping B2B infrastructure',
+    claim: 'You consistently invest in technical founders building B2B infra.',
+    memoryIds: ['m3', 'm7', 'm8', 'm12', 'm13'],
+    confidence: 92,
+  },
+  {
+    id: 's2',
+    quote: 'eng leads at Stripe, Anthropic, or DeepMind',
+    claim: 'A few specific alumni networks meaningfully raise your interest.',
+    memoryIds: ['m3', 'm7', 'm13', 'm17'],
+    confidence: 81,
+  },
+  {
+    id: 's3',
+    quote: 'team has shipped together for 4+ years',
+    claim: 'Long-tenure cofounder relationships materially de-risk a deal for you.',
+    memoryIds: ['m14', 'm15'],
+    confidence: 86,
+  },
+  {
+    id: 's4',
+    quote: 'cofounders met last quarter',
+    claim: 'New cofounder relationships are a near-automatic concern.',
+    memoryIds: ['m15'],
+    confidence: 78,
+  },
+  {
+    id: 's5',
+    quote: 'distrust slide-heavy decks and clean CAC numbers',
+    claim: 'You read polish as a warning sign more than a signal.',
+    memoryIds: ['m1', 'm2'],
+    confidence: 72,
+  },
+  {
+    id: 's6',
+    quote: 'paying design partners and a 3-year burn plan that maps to milestones',
+    claim: 'You weight commercial proof and disciplined burn over narrative.',
+    memoryIds: ['m16', 'm17', 'm23'],
+    confidence: 84,
+  },
+  {
+    id: 's7',
+    quote: 'pass on hospital-procurement healthcare almost reflexively',
+    claim: 'Hospital-sale healthcare is functionally a no.',
+    memoryIds: ['m5', 'm6', 'm22'],
+    confidence: 90,
+  },
+  {
+    id: 's8',
+    quote: 'cool quickly on consumer copilots',
+    claim: 'Consumer copilots lose your attention fast.',
+    memoryIds: ['m20'],
+    confidence: 65,
+  },
+  {
+    id: 's9',
+    quote: '2014–2019 infra wave as your reference shape',
+    claim: 'You benchmark new deals against the last infra cycle.',
+    memoryIds: ['m12', 'm19'],
+    confidence: 70,
+  },
+  {
+    id: 's10',
+    quote: 'pre-Series-A ARR above $250k from real customers',
+    claim: 'A specific ARR floor is becoming a hard filter.',
+    memoryIds: ['m16', 'm21'],
+    confidence: 76,
+  },
+  {
+    id: 's11',
+    quote: 'CTO who can answer the inference-cost question without checking notes',
+    claim: 'Cost-per-token fluency is your favorite live test for technical depth.',
+    memoryIds: ['m18'],
+    confidence: 68,
+  },
+  {
+    id: 's12',
+    quote: 'Your communication style is all lowercase, direct, and straight to the point',
+    claim: 'Generated emails should sound like you: lowercase, short, no formalities, clear ask at the end.',
+    memoryIds: ['m24', 'm25'],
+    confidence: 88,
+  },
 ];
 
 /* ── artifacts ────────────────────────────────────────────────────────── */
@@ -479,7 +594,7 @@ export const artifacts: Artifact[] = [
     mode: 'VC',
     time: 'just now',
     authorId: 'me',
-    reviewerIds: ['jp', 'sk', 'lr', 'hc'],
+    reviewerIds: ['jp', 'sk', 'mt', 'lr', 'hc'],
     verdict: 'invest',
     read: 'Bullish. Cobra→Nia is 4 years of one obsession — that\'s the signal.',
     body:
@@ -493,7 +608,7 @@ export const artifacts: Artifact[] = [
     mode: 'VC',
     time: 'just now',
     authorId: 'me',
-    reviewerIds: ['jp', 'sk', 'lr', 'hc'],
+    reviewerIds: ['jp', 'sk', 'mt', 'lr', 'hc'],
     verdict: 'invest',
     read: 'INVEST · conviction high · $2M check · pulled from Marcus\'s sheet + thesis.',
     body:
@@ -542,6 +657,239 @@ export const artifacts: Artifact[] = [
         {
           who: 'Marcus T.', initials: 'MT', hue: 150, time: '2 wks ago',
           text: 'sheet up. didn\'t fill in firm cross-refs or verdict — wanted a partner to take it from here.',
+        },
+      ],
+    },
+  },
+  {
+    id: 'n6',
+    company: 'Nozomio',
+    type: 'Sourcing Sheet',
+    mode: 'VC',
+    time: 'just now',
+    authorId: 'me',
+    reviewerIds: [],
+    verdict: 'investigate',
+    read: 'live source sheet · linkedin-triggered · Nia searched public web, company data, social, code, press, and firm memory.',
+    bodyKind: 'html',
+    body:
+      '<div style="display:grid;gap:14px">' +
+      '<section style="border:1px solid hsl(var(--border));border-radius:10px;padding:14px;background:hsl(var(--card))">' +
+      '<div style="font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:hsl(var(--muted-foreground));font-weight:700">source sheet · generated from linkedin profile</div>' +
+      '<h2 style="margin:8px 0 6px;font-size:18px;line-height:1.2">Nozomio · Arlan Rakhmetzhanov</h2>' +
+      '<p style="margin:0;color:hsl(var(--muted-foreground))">angle: technical depth · comp set: pinecone / modal / replit · generated after viewing Arlan on LinkedIn.</p>' +
+      '</section>' +
+      '<section style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">' +
+      '<div style="border:1px solid hsl(var(--border));border-radius:10px;padding:12px"><div style="font-weight:700">company</div><p>Nozomio · YC S25 · SF · ~3 employees · founded 2025. Nia gives AI coding agents live context from docs, papers, datasets, and private repos.</p></div>' +
+      '<div style="border:1px solid hsl(var(--border));border-radius:10px;padding:12px"><div style="font-weight:700">round</div><p>$6.2M seed · CRV led · BoxGroup, LocalGlobe, Paul Graham, Thomas Wolf and angels.</p></div>' +
+      '</section>' +
+      '<h2>source graph</h2>' +
+      '<div style="display:grid;gap:10px">' +
+      '<div style="border:1px solid hsl(var(--border));border-radius:10px;padding:12px"><div style="display:flex;gap:8px;align-items:center"><span style="width:28px;height:28px;border-radius:7px;display:grid;place-items:center;background:#0a66c2;color:white;font-weight:800">in</span><strong>LinkedIn</strong></div><p>Arlan profile, current Nozomio role, Stanford AI lab overlap, one-hop paths through Sarah Chen.</p><code>arlan rakhmetzhanov linkedin nozomio stanford cobra</code></div>' +
+      '<div style="border:1px solid hsl(var(--border));border-radius:10px;padding:12px"><div style="display:flex;gap:8px;align-items:center"><span style="width:28px;height:28px;border-radius:7px;display:grid;place-items:center;background:#111;color:white;font-weight:800">X</span><strong>X / social</strong></div><p>Launch thread, follower spike, developer replies asking for private-repo indexing and fresh-doc context.</p><code>nozomio nia launch private repos agent context</code></div>' +
+      '<div style="border:1px solid hsl(var(--border));border-radius:10px;padding:12px"><div style="display:flex;gap:8px;align-items:center"><span style="width:28px;height:28px;border-radius:7px;display:grid;place-items:center;background:#146aff;color:white;font-weight:800">CB</span><strong>Crunchbase</strong></div><p>Seed metadata, investor graph, company location, headcount range, CRV-led financing signal.</p><code>nozomio seed crv paul graham thomas wolf</code></div>' +
+      '<div style="border:1px solid hsl(var(--border));border-radius:10px;padding:12px"><div style="display:flex;gap:8px;align-items:center"><span style="width:28px;height:28px;border-radius:7px;display:grid;place-items:center;background:#24292f;color:white;font-weight:800">GH</span><strong>GitHub</strong></div><p>@arlanrakh repo footprint, cobra-adjacent work, commit cadence, top languages: Python, TypeScript, Rust.</p><code>arlanrakh github cobra static analysis</code></div>' +
+      '<div style="border:1px solid hsl(var(--border));border-radius:10px;padding:12px"><div style="display:flex;gap:8px;align-items:center"><span style="width:28px;height:28px;border-radius:7px;display:grid;place-items:center;background:#d9892f;color:white;font-weight:800">N</span><strong>Nozomio docs / site</strong></div><p>Nia positioned as context infrastructure, not a coding assistant. Source types: docs, papers, datasets, private repos.</p><code>nozomio nia api docs papers datasets private repos</code></div>' +
+      '<div style="border:1px solid hsl(var(--border));border-radius:10px;padding:12px"><div style="display:flex;gap:8px;align-items:center"><span style="width:28px;height:28px;border-radius:7px;display:grid;place-items:center;background:#6b7280;color:white;font-weight:800">FM</span><strong>firm memory</strong></div><p>Pinecone March visit, Modal Feb visit, Replit buyer note. Same context-layer wedge, earlier and more founder-driven.</p><code>firm memory pinecone modal replit context layer devtools</code></div>' +
+      '</div>' +
+      '<h2>synthesis</h2>' +
+      '<ul><li>founder signal is real: Cobra to Nia is a coherent technical line, not a pitch story.</li><li>round signal is loud: CRV, PG, and Wolf make price the key risk.</li><li>distribution shape matches bottom-up dev infra, especially Pinecone and Modal memories.</li><li>network paths: Sarah Chen for Stanford diligence, Marcus Liu for Cobra/founder-risk calibration.</li></ul>' +
+      '<h2>prior customer echoes</h2>' +
+      '<blockquote>Pinecone customer call, 2024: "the database mattered once the model needed live company context, not toy data."</blockquote>' +
+      '<blockquote>Modal user interview, 2025: "we picked the tool that let our agents reach fresh compute and code without ceremony."</blockquote>' +
+      '<blockquote>Replit buyer note, 2023: "developers adopt infra when it removes setup from the loop. anything else is sales theater."</blockquote>' +
+      '</div>',
+    sources: ['nia', 'notion', 'prior'],
+  },
+  {
+    id: 'n7',
+    company: 'Nozomio',
+    type: 'Investment Memo',
+    mode: 'VC',
+    time: 'just now',
+    authorId: 'me',
+    reviewerIds: ['jp', 'sk', 'mt', 'lr', 'hc'],
+    verdict: 'invest',
+    read: 'invest · $2m · cobra→nia is real conviction · references pinecone + modal.',
+    body:
+      'investment memo · nozomio · arlan rakhmetzhanov\n\n' +
+      'why now\n' +
+      'context layer for ai coding agents is the next infra fight. foundation models are commoditizing — what compounds is what the agent can reach: live code, private docs, structured datasets. nia ships an api the consuming side already wants (cursor-style, claude-style, in-house rag stacks).\n\n' +
+      'source synthesis\n' +
+      '- linkedin: arlan profile + stanford research overlap\n' +
+      '- crunchbase: yc s25, seed round, investor graph, headcount range\n' +
+      '- x: launch thread, dev replies, follower spike after nia announcement\n' +
+      '- github: @arlanrakh commit cadence, cobra lineage, python/typescript/rust mix\n' +
+      '- company docs: nia indexes docs, papers, datasets, private repos for agents\n' +
+      '- youtube / press: founder interview, techcrunch, yahoo finance, startupsunion, digitrendz\n' +
+      '- firm memory: pinecone march visit, modal feb visit, replit dev-tools notes\n\n' +
+      'comp set\n' +
+      '- pinecone (march visit) — same context-layer wedge, but nozomio is earlier and the founder is more technical\n' +
+      '- modal (feb visit) — same bottom-up dev distribution shape\n' +
+      'both pattern-match. nozomio is the earlier, sharper version.\n\n' +
+      'prior-customer echoes\n' +
+      '- pinecone customer call, 2024: "the database mattered once the model needed live company context, not toy data."\n' +
+      '- modal user interview, 2025: "we picked the tool that let our agents reach fresh compute and code without ceremony."\n' +
+      '- replit buyer note, 2023: "developers adopt infra when it removes setup from the loop. anything else is sales theater."\n\n' +
+      'why arlan\n' +
+      '- four years on the same problem. cobra (stanford research, static analysis) → nia (commercial generalization, live agent context). same primitive, broader surface. not a pivot — a thesis he\'s refined since 16.\n' +
+      '- shipped a 20k-user product at 15. github @arlanrakh shows steady output. this is a builder.\n' +
+      '- pg + thomas wolf re-upping isn\'t hype. it\'s the people closest to dev-tool distribution betting on him.\n\n' +
+      'what i like (pulled straight from how i invest)\n' +
+      '- young technical founder who ships — my archetype, 3 of last 5 invests fit it\n' +
+      '- conviction lineage: 4 years on one problem is the strongest founder-fit signal in the file\n' +
+      '- dev-infra wedge timing — every coding agent stack needs this primitive\n' +
+      '- bottom-up api distribution — how this category gets won\n\n' +
+      'what gives me pause (also from how i invest)\n' +
+      '- solo founder. i tolerate it when they\'re shipping (he is) but track whether he adds a technical co-founder in 6 months.\n' +
+      '- round is hot. top of what i typically pay for unproven gtm. mitigant: ownership target 1.5–2%, not stretching for more.\n' +
+      '- no gtm signal yet. standard for stage. watch for net new agent-stack integrations month over month.\n\n' +
+      'verdict\n' +
+      '- recommendation: invest\n' +
+      '- conviction: high\n' +
+      '- suggested check: $2m\n' +
+      '- ownership target: 1.5–2%\n' +
+      '- re-rate: month 9 on co-founder addition + integration count\n\n' +
+      'pulled from: source sheet (n6) · marcus\'s starter sheet (n1) · founder background (n4).',
+    sources: ['notion', 'prior'],
+  },
+  {
+    id: 'n8',
+    company: 'Nozomio',
+    type: 'Pass Email',
+    mode: 'VC',
+    time: 'just now',
+    authorId: 'me',
+    reviewerIds: [],
+    verdict: 'pass',
+    read: 'pass / follow-up email to arlan · lowercase, direct, no formalities.',
+    body: '',
+    sources: ['email'],
+    bodyKind: 'email',
+    email: {
+      subject: 'nozomio — quick follow-up',
+      messages: [
+        {
+          from: 'you',
+          to: 'arlan@nozom.io',
+          time: 'just now',
+          body:
+            'arlan — i dug into nozomio and the cobra → nia line is real. strongest part of the story by far.\n\n' +
+            'i am going to pass on this round as priced. too much of the risk is still around solo-founder load + no gtm proof, and the crv / pg / wolf signal is already doing a lot of work in the price.\n\n' +
+            'what would change my mind: 3 commercial integrations or a technical co-founder who can own part of the platform. if either happens, i want the first look.\n\n' +
+            'keep me posted on the next 60 days. especially usage, paid integrations, and what parts of cobra actually survive inside nia.\n\n' +
+            'h.',
+        },
+      ],
+    },
+  },
+  {
+    id: 'n10',
+    company: 'Nozomio',
+    type: 'Meeting Prep',
+    mode: 'VC',
+    time: 'just now',
+    authorId: 'me',
+    reviewerIds: [],
+    verdict: 'investigate',
+    read: 'meeting prep · 20-min founder call plan · questions pulled from linkedin, deck, source sheet, and firm memory.',
+    body:
+      'meeting prep · nozomio / arlan\n\n' +
+      'goal\n' +
+      '- decide whether this is an exception to the firm pattern on solo young founders.\n' +
+      '- test whether cobra → nia is durable technical edge or just a good origin story.\n\n' +
+      'first 5 min — founder lineage\n' +
+      '- walk me through cobra → nia. what code, architecture, or indexing primitive survived?\n' +
+      '- what did the stanford / caltech work teach you that a normal rag founder would miss?\n\n' +
+      'middle 10 min — product + demand\n' +
+      '- which sources are actually indexed today: docs, papers, datasets, private repos, issues, slack, linear?\n' +
+      '- who is using it in production, and what breaks when nia is removed?\n' +
+      '- what is the sharpest developer quote from the last 10 users?\n\n' +
+      'last 5 min — round + risk\n' +
+      '- what is still open after crv, boxgroup, localglobe, pg, and thomas wolf?\n' +
+      '- are you hiring a technical co-founder or senior infra lead? if not, why not?\n' +
+      '- what metric makes this obviously working in 60 days?\n\n' +
+      'firm-memory prompts\n' +
+      '- pinecone customer call, 2024: "the database mattered once the model needed live company context, not toy data."\n' +
+      '- modal user interview, 2025: "we picked the tool that let our agents reach fresh compute and code without ceremony."\n' +
+      '- replit buyer note, 2023: "developers adopt infra when it removes setup from the loop. anything else is sales theater."\n\n' +
+      'send style\n' +
+      '- lowercase. direct. no formalities. one ask at the end.',
+    sources: ['notion', 'prior', 'nia'],
+  },
+  {
+    id: 'n9',
+    company: 'Nozomio',
+    type: 'Research Note',
+    mode: 'VC',
+    time: 'stored doc',
+    authorId: 'mt',
+    reviewerIds: ['me'],
+    verdict: 'investigate',
+    read: 'stored note · yc s25 context-layer companies · nozomio tagged as strongest technical-founder signal.',
+    body:
+      'Stored research note from the YC S25 batch scan.\n\n' +
+      'Nozomio was tagged alongside other agent-infra/context-layer companies because it sits closest to the live-context problem every coding agent runs into: private repos, docs, papers, and datasets change faster than model training cycles.\n\n' +
+      'Why it was stored: founder-market fit looked unusually sharp for the stage. Arlan had already worked on Cobra, a static-analysis tool, before commercializing the broader context primitive through Nia.\n\n' +
+      'Relation reason: same company, same founder, same context-layer thesis. Automatically linked to the live source sheet, memo, and intro email.',
+    sources: ['prior', 'notion'],
+  },
+  {
+    id: 'n11',
+    company: 'Nozomio',
+    type: 'Network Map',
+    mode: 'VC',
+    time: 'just now',
+    authorId: 'me',
+    reviewerIds: [],
+    verdict: 'investigate',
+    read: 'arlan network paths · 2 warm routes surfaced from linkedin + firm memory.',
+    body:
+      'arlan rakhmetzhanov · network paths\n\n' +
+      '1. sarah chen\n' +
+      '- path: you → sarah chen → arlan\n' +
+      '- source: linkedin overlap + firm memory\n' +
+      '- why useful: overlapped with arlan at the stanford ai lab and can speak to how much of cobra was arlan actually shipping vs. research scaffolding.\n' +
+      '- ask: "can you sanity-check arlan\'s technical depth and whether cobra → nia is a real line?"\n\n' +
+      '2. marcus liu\n' +
+      '- path: you → marcus liu → arlan\n' +
+      '- source: angel graph + prior cobra note\n' +
+      '- why useful: angel in cobra, knows arlan\'s technical chops firsthand, likely has the cleanest read on founder maturity.\n' +
+      '- ask: "would you back him again at this price, and what has to be true in 60 days?"\n\n' +
+      'shadow read\n' +
+      '- use sarah for technical diligence.\n' +
+      '- use marcus for founder-risk / price calibration.\n' +
+      '- do not ask either for a generic intro until after the deck read.',
+    sources: ['prior', 'notion'],
+  },
+  {
+    id: 'n12',
+    company: 'Nozomio',
+    type: 'Slack Thread',
+    mode: 'VC',
+    time: 'just now',
+    authorId: 'jp',
+    reviewerIds: ['me'],
+    verdict: 'investigate',
+    read: 'slack thread · jin and marcus both flag arlan as unusually technical.',
+    body: '',
+    sources: ['slack', 'prior'],
+    bodyKind: 'slack',
+    slack: {
+      channel: '#sourcing',
+      messages: [
+        {
+          who: 'Jin P.', initials: 'JP', hue: 200, time: 'just now',
+          text: 'read the cobra notes. arlan is cracked. this is not a normal yc devtools founder doing wrapper infra.',
+        },
+        {
+          who: 'Marcus T.', initials: 'MT', hue: 150, time: 'just now',
+          text: 'agree. still worried about solo + age, but the technical line is real. cobra to nia is a real obsession, not a pitch-deck story.',
+        },
+        {
+          who: 'Jin P.', initials: 'JP', hue: 200, time: 'just now',
+          text: 'if we pass, it should be price or company-building risk. not founder technical depth.',
+          reactions: ['+1', '100'],
         },
       ],
     },
@@ -694,15 +1042,16 @@ export const deals: Deal[] = [
     ask: '$6.2M seed (CRV led)',
     lastActivity: 'just now',
     originatorId: 'mt',
-    yourArtifactId: 'n3',
-    relatedArtifactIds: ['n1', 'n2', 'n4', 'n5'],
+    yourArtifactId: 'n7',
+    relatedArtifactIds: ['n6', 'n7', 'n8', 'n10', 'n11', 'n12', 'n9', 'n1', 'n2', 'n3', 'n4', 'n5'],
     consensus: 40,
     verdicts: [
       { teammateId: 'me', verdict: 'invest', conviction: 'high',   signals: ['Cobra → Nia 4-yr lineage', 'ships solo', 'PG + Wolf re-up'] },
       { teammateId: 'jp', verdict: 'invest', conviction: 'medium', signals: ['context layer is the right wedge', 'dev-tools bottom-up distribution'] },
       { teammateId: 'sk', verdict: 'pass',   conviction: 'medium', signals: ['no GTM signal yet', 'academic origins'] },
-      { teammateId: 'lr', verdict: 'pass',   conviction: 'high',   signals: ['solo at 18', 'no prior infra ship', 'doesn\'t match firm winners'] },
-      { teammateId: 'hc', verdict: 'pass',   conviction: 'medium', signals: ['round is hot', 'paying for PG + Wolf, not the company'] },
+      { teammateId: 'mt', verdict: 'pass',   conviction: 'medium', signals: ['solo at 18', 'no prior infra ship', 'doesn\'t match firm winners'] },
+      { teammateId: 'lr', verdict: 'pass',   conviction: 'high',   signals: ['round is hot', 'paying for PG + Wolf, not the company'] },
+      { teammateId: 'hc', verdict: 'invest', conviction: 'medium', signals: ['Cobra → Nia is real conviction', 'ignore the round noise'] },
     ],
     firmVerdict: {
       call: 'investigate',
@@ -760,14 +1109,20 @@ export const teammateChats: Record<string, Record<string, TeammateExchange[]>> =
         a: 'Three paying integration partners on commercial terms by Q3. Or Arlan brings on a GTM co-founder with infra distribution chops. Either flips me.' },
     ],
     lr: [
-      { q: 'Why so high-conviction pass?',
-        a: 'Look at our winners — every one had a repeat founder or a co-founder pair with prior infra exits. Solo, 18, first real shipping experience: that pattern doesn\'t match a single deal we\'ve made money on. I\'m not betting against Arlan personally, I\'m betting against this shape, and that bet is 30 years deep.' },
-    ],
-    hc: [
       { q: 'What valuation would change your mind?',
         a: '$30M post or below, with a technical co-founder added. Above that we\'re paying for Paul Graham and Thomas Wolf, not for the company. The angels make money on the markup; we don\'t.' },
       { q: 'So you\'d never do it at this round?',
         a: 'Never is strong. If the round closes hot and the next 6 months show real integration revenue, I\'ll re-rate. But buying into the round today at this price is buying hype, not signal.' },
+    ],
+    mt: [
+      { q: 'Why pass?',
+        a: 'Solo, 18, no prior infra company shipped. I like the builder signal, but it does not match the repeat-founder or co-founder-pair pattern in our winners.' },
+      { q: 'What would change your mind?',
+        a: 'A technical co-founder with infra production scars, or six months of real integration revenue. Either would move this from interesting founder to investable company.' },
+    ],
+    hc: [
+      { q: 'Why are you for?',
+        a: 'Cobra to Nia is real conviction. The age and round noise are distractions. If he has been grinding the same primitive since 16 and now the market finally wants it, that is exactly when you lean in.' },
     ],
     me: [
       { q: 'Walk me through your take.',
@@ -870,7 +1225,7 @@ export const notifications: Notification[] = [
 
 export const model = {
   summaryParagraph:
-    "You back technical founders shipping B2B infrastructure — the kind who were eng leads at Stripe, Anthropic, or DeepMind before they started something. You weight execution risk low when the team has shipped together for 4+ years and you weight it sky-high when the cofounders met last quarter. You distrust slide-heavy decks and clean CAC numbers; you trust paying design partners and a 3-year burn plan that maps to milestones. You pass on hospital-procurement healthcare almost reflexively, you cool quickly on consumer copilots, and you keep coming back to the 2014–2019 infra wave as your reference shape. Your strongest tells are pre-Series-A ARR above $250k from real customers and a CTO who can answer the inference-cost question without checking notes.",
+    "You back technical founders shipping B2B infrastructure — the kind who were eng leads at Stripe, Anthropic, or DeepMind before they started something. You weight execution risk low when the team has shipped together for 4+ years and you weight it sky-high when the cofounders met last quarter. You distrust slide-heavy decks and clean CAC numbers; you trust paying design partners and a 3-year burn plan that maps to milestones. You pass on hospital-procurement healthcare almost reflexively, you cool quickly on consumer copilots, and you keep coming back to the 2014–2019 infra wave as your reference shape. Your strongest tells are pre-Series-A ARR above $250k from real customers and a CTO who can answer the inference-cost question without checking notes. Your communication style is all lowercase, direct, and straight to the point.",
   preferences: [
     { label: 'Technical founders', value: 84 },
     { label: 'B2B infrastructure', value: 73 },

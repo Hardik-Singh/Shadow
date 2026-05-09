@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Artifact } from '../mock/data';
 import { useArtifacts } from '../lib/use-artifacts';
 import MemorySummary from './MemorySummary';
@@ -18,11 +18,16 @@ type Props = {
 export default function MyShadowTab({ onOpenInFirm, initialArtifactId, pending }: Props) {
   const [open, setOpen] = useState<Artifact | null>(null);
   const all = useArtifacts();
+  const openedIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!initialArtifactId) return;
+    if (openedIdRef.current === initialArtifactId) return;
     const a = all.find((x) => x.id === initialArtifactId);
-    if (a) setOpen(a);
+    if (a) {
+      openedIdRef.current = initialArtifactId;
+      setOpen(a);
+    }
   }, [initialArtifactId, all]);
 
   return (
