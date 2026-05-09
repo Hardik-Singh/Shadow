@@ -910,6 +910,12 @@ export type ShadowUpdate = {
   citedMemoryIds?: string[];
   createdAt: string;        // relative time
   diff?: { before?: string; after?: string };
+  priority?: 'high' | 'medium' | 'low';
+  confidence?: number;      // 0-100
+  impact?: string;
+  actionLabel?: string;
+  evidence?: string[];
+  dealId?: string;
 };
 
 export const shadowUpdates: ShadowUpdate[] = [
@@ -935,21 +941,48 @@ export const shadowUpdates: ShadowUpdate[] = [
   {
     id: 'u3',
     kind: 'suggestion',
-    summary: 'Soften "developer tools" preference?',
+    summary: 'Re-score developer tools from broad preference to infra-only',
     rationale:
-      'You weighted developer tools at 58 six months ago, but the last 4 dev-tools companies you reviewed all ended in pass within 15 minutes — and your voice notes have shifted from "interesting space" to "crowded, no moat." I think this preference is now closer to 40. Want me to adjust?',
+      'You weighted developer tools at 58 six months ago, but the last 4 generic dev-tools companies you reviewed all ended in pass within 15 minutes. The positive signal is narrower: infra primitives with distribution into agent stacks.',
     citedMemoryIds: ['m9'],
     createdAt: '1 hr ago',
-    diff: { before: '58', after: '~40' },
+    diff: { before: '58', after: '44' },
+    priority: 'high',
+    confidence: 82,
+    impact: 'Future dev-tools deals will require infra wedge + paying workflow before surfacing as invest.',
+    actionLabel: 'Update thesis weight',
+    evidence: ['4 dev-tools passes in 6 months', 'Voice note: "crowded, no moat"', 'Nozomio stayed positive because context infra is the wedge'],
+    dealId: 'd6',
   },
   {
     id: 'u4',
     kind: 'suggestion',
-    summary: 'Add explicit thesis: "ex-Stripe eng leads"?',
+    summary: 'Promote ex-Stripe infra lead to first-class founder signal',
     rationale:
-      'Three of your last six invests had ex-Stripe engineers as a cofounder. You\'ve referenced "the Stripe shape" in voice notes twice this week. This isn\'t in your model yet — should I make it a first-class signal?',
+      'Three of your last six invests had ex-Stripe engineers as a cofounder, and your Acme read changed materially after James Chen surfaced as a Stripe infra lead. This is currently buried inside generic "technical founder" scoring.',
     citedMemoryIds: ['m3', 'm8'],
     createdAt: '2 hr ago',
+    priority: 'medium',
+    confidence: 78,
+    impact: 'Founder background and sourcing-sheet actions will rank higher when Stripe infra tenure is present.',
+    actionLabel: 'Add founder signal',
+    evidence: ['Acme: ex-Stripe CTO raised conviction', 'Voice note: "if the CTO came from Stripe..."', 'Prior infra winners match the same operator profile'],
+    dealId: 'd1',
+  },
+  {
+    id: 'u6',
+    kind: 'suggestion',
+    summary: 'Create Nozomio follow-up trigger for GTM proof',
+    rationale:
+      'Your Nozomio read is invest, but three firm shadows are blocked on GTM. The model should watch specifically for net-new agent-stack integrations and a technical cofounder signal before the next IC pass.',
+    citedMemoryIds: ['m12', 'm16', 'm18'],
+    createdAt: 'just now',
+    priority: 'high',
+    confidence: 88,
+    impact: 'Shadow will proactively suggest a partner follow-up when new integration evidence appears.',
+    actionLabel: 'Add watch trigger',
+    evidence: ['Firm verdict split 2 invest / 3 pass', 'Jin agrees context layer is right wedge', 'Sarah wants commercial integration proof'],
+    dealId: 'd6',
   },
   {
     id: 'u5',
