@@ -10,7 +10,14 @@
       <!-- HEADER -->
       <header class="header drag">
         <div class="brand">
-          <span class="logo">◈</span>
+          <span class="logo" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <ellipse cx="15.5" cy="6" rx="2.6" ry="2.6" fill="#000" stroke="none" opacity="0.9"/>
+              <path d="M19.2 21c0-3.4-2-5.6-5.2-5.6S8.8 17.6 8.8 21" fill="#000" stroke="none" opacity="0.9"/>
+              <circle cx="10" cy="6" r="2.6"/>
+              <path d="M14 21c0-3.4-2-5.6-4.5-5.6S5 17.6 5 21"/>
+            </svg>
+          </span>
           <span class="brand-name">Shadow</span>
         </div>
         <button class="mode-chip nodrag" id="mode" title="Click to switch mode">
@@ -49,18 +56,18 @@
           </div>
         </section>
 
+        <!-- SUGGESTIONS -->
+        <section class="card">
+          <div class="card-head"><span class="label">shadow thinks you want to</span></div>
+          <div class="pills" id="pills"></div>
+        </section>
+
         <!-- MEMORY WRITES (live) -->
         <section class="card">
           <div class="card-head">
             <span class="label">memory writes <span class="badge live">live</span></span>
           </div>
           <ul class="feed" id="writes"></ul>
-        </section>
-
-        <!-- SUGGESTIONS -->
-        <section class="card">
-          <div class="card-head"><span class="label">shadow thinks you want to</span></div>
-          <div class="pills" id="pills"></div>
         </section>
 
         <!-- ARTIFACTS -->
