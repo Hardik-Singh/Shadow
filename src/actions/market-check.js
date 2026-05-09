@@ -23,13 +23,19 @@ async function run({ company } = {}) {
     hs.search({ scope: 'partner', partner, firm, query: `${co} market TAM`, sources: ['vault'], k: 6, halfLifeHours: 24 }),
     hs.search({ scope: 'firm', partner, firm, query: `comparable exits ${co} space`, sources: ['vault'], k: 6, halfLifeHours: 8760 }),
   ]);
-  const [comps, news] = await Promise.all([
+  // Market sizing leans hardest on analyst PDFs + research reports; tweets and
+  // blogs catch insider operator commentary the analyst reports miss.
+  const [comps, news, research, pdfs, tweets, blogs] = await Promise.all([
     nia.web(`${co} comparable companies market`, 'company'),
-    nia.web(`${co} market exits`, 'news'),
+    nia.web(`${co} market exits acquisitions`, 'news'),
+    nia.web(`${co} sector market research analyst`, 'research'),
+    nia.web(`${co} sector TAM whitepaper report`, 'pdf'),
+    nia.web(`${co} sector commentary operator`, 'tweet'),
+    nia.web(`${co} sector deep dive blog`, 'blog'),
   ]);
   const stats = hsContextStats([tamSkepticism, deckMarket, firmComps]);
-  const citations = mergeCitations(comps, news);
-  const niaTotal = (comps || []).length + (news || []).length;
+  const citations = mergeCitations(comps, news, research, pdfs, tweets, blogs);
+  const niaTotal = citations.length;
 
   const prompt = [
     `COMPANY: ${co}`,
@@ -37,7 +43,7 @@ async function run({ company } = {}) {
     `TAM skepticism (${tamSkepticism.length}):`, summarizeHits(tamSkepticism),
     `deck market claims (${deckMarket.length}):`, summarizeHits(deckMarket),
     `firm comp history (${firmComps.length}):`, summarizeHits(firmComps),
-    `world hits — comps ${(comps || []).length} · exits/news ${(news || []).length}`,
+    `world hits — comps ${(comps || []).length} · news ${(news || []).length} · research ${(research || []).length} · pdfs ${(pdfs || []).length} · tweets ${(tweets || []).length} · blogs ${(blogs || []).length}`,
     'Write the market check card now.',
   ].join('\n');
 

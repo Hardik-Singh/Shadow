@@ -22,20 +22,27 @@ async function run({ company } = {}) {
     hs.search({ scope: 'partner', partner, firm, query: 'what user thinks about technical founders', sources: ['vault'], k: 8, halfLifeHours: 720 }),
     hs.search({ scope: 'firm', partner, firm, query: 'firm founder profile patterns successful invests', sources: ['vault'], k: 6, halfLifeHours: 8760 }),
   ]);
-  const [people, companies] = await Promise.all([
+  // Founder context fans out across every public surface where founders leak
+  // signal: GitHub commits, tweets/threads, long-form essays, news, prior
+  // startup directories. Universal mode picks up cross-source matches.
+  const [github, companies, news, tweets, blogs, universal] = await Promise.all([
     nia.web(`${co} CTO founder background`, 'github'),
     nia.web(co, 'company'),
+    nia.web(`${co} founder press interview`, 'news'),
+    nia.web(`${co} founder twitter thread`, 'tweet'),
+    nia.web(`${co} founder essay personal blog`, 'blog'),
+    nia.universal(`${co} founders prior startups exits`, 10),
   ]);
   const stats = hsContextStats([founderViews, firmFounderHistory]);
-  const citations = mergeCitations(people, companies);
-  const niaTotal = (people || []).length + (companies || []).length;
+  const citations = mergeCitations(github, companies, news, tweets, blogs, universal);
+  const niaTotal = citations.length;
 
   const prompt = [
     `COMPANY: ${co}`,
     `HYPERSPELL — ${stats.total} memories (${stats.by_scope.partner} personal · ${stats.by_scope.firm} firm)`,
     `founder preferences (${founderViews.length}):`, summarizeHits(founderViews),
     `firm history (${firmFounderHistory.length}):`, summarizeHits(firmFounderHistory),
-    `world hits — people ${(people || []).length} · company ${(companies || []).length}`,
+    `world hits — github ${(github || []).length} · company ${(companies || []).length} · news ${(news || []).length} · tweets ${(tweets || []).length} · blogs ${(blogs || []).length} · universal ${(universal || []).length}`,
     'Write the founder profile now.',
   ].join('\n');
 
