@@ -21,6 +21,35 @@ const memory = require('./memory');
   } catch (e) { console.error('[env]', e); }
 })();
 
+// ─── Memory layer (Hyperspell-backed) ─────────────────────────────────
+// Defer requires until we know HYPERSPELL_API_KEY is set — config.js exits
+// the process otherwise, which would kill the HUD on every dev run without
+// real keys. So treat memory as opt-in: if Hyperspell isn't configured the
+// HUD still boots and Gemini-Live captions still work, just nothing is
+// persisted to memory.
+let memoryEnabled = false;
+let MemoryRepo = null;
+let bus = null;
+if (process.env.HYPERSPELL_API_KEY && process.env.HYPERSPELL_BASE && process.env.HYPERSPELL_USER_ID) {
+  try {
+    bus = require('./bus');
+    MemoryRepo = require('./repos/memory');
+    memoryEnabled = true;
+    // The HUD's writes feed is driven by main's local memory module above.
+    // We only forward suggestions + artifacts — the things the local memory
+    // module doesn't compute. Hyperspell-backed memory writes themselves are
+    // a silent mirror to the firm vault, not a duplicate UI feed.
+    bus.on('suggestions', (list) => send('signal:suggestions', list));
+    bus.on('artifact',    (a)    => send('signal:artifact', a));
+    console.log('[memory] online — hyperspell-backed firm brain');
+  } catch (e) {
+    console.error('[memory] init failed', e && e.message);
+    memoryEnabled = false;
+  }
+} else {
+  console.log('[memory] disabled — set HYPERSPELL_API_KEY/BASE/USER_ID to enable');
+}
+
 let win = null;
 let tray = null;
 let inFlight = false;
@@ -96,7 +125,15 @@ async function captionFrame(b64Jpeg) {
     if (text) {
       send('signal:seeing', text);
       send('signal:status', 'connected');
+      // Local fast-path memory (drives signal:write feed in HUD).
       memory.noteScreen(text);
+      // Hyperspell mirror — partner vault + firm vault. Silent: the local
+      // memory module already pushes to the renderer feed; this fans out to
+      // the durable cross-session firm brain.
+      if (memoryEnabled && MemoryRepo) {
+        try { MemoryRepo.create({ kind: 'screen', text }); }
+        catch (e) { console.warn('[memory] screen write failed', e && e.message); }
+      }
     }
   } catch (e) {
     console.error('[vision] fetch', e && e.message);
@@ -205,6 +242,54 @@ ipcMain.on('shadow:audio', (_e, b64Pcm) => {
   live.sendAudio(b64Pcm);
 });
 
+// Voice transcript from renderer-side webkitSpeechRecognition. Renderer sends
+// finalized utterances; we store as a `voice` memory and the bus + suggest
+// engine + dashboard pick it up from there.
+ipcMain.on('shadow:voice-text', (_e, payload) => {
+  if (!memoryEnabled || !MemoryRepo || !payload) return;
+  const text = (typeof payload === 'string' ? payload : payload.text || '').trim();
+  if (!text) return;
+  const confidence = payload && payload.confidence;
+  try {
+    MemoryRepo.create({ kind: 'voice', text: '"' + text + '"', meta: { confidence } });
+    // Also surface in the "watching now / hearing" row so the HUD shows it live.
+    send('signal:hearing', text);
+  } catch (e) { console.warn('[memory] voice write failed', e && e.message); }
+});
+
+// Click on a HUD suggestion pill — runs the action handler, which reads from
+// Hyperspell, calls the LLM, and emits an `artifact` event that the renderer
+// renders as a card.
+ipcMain.handle('shadow:click-suggestion', async (_e, { id }) => {
+  if (!memoryEnabled) return { error: 'memory layer not enabled' };
+  try {
+    const suggest = require('./suggest/engine');
+    const registry = require('./actions/registry');
+    const s = suggest.clickSuggestion(id);
+    if (!s) return { error: 'unknown suggestion' };
+    const result = await registry.run(s.action_id, { company: s.company_hint });
+    bus.emit('artifact', result);
+    return { ok: true, kind: result.kind };
+  } catch (err) {
+    console.warn('[suggest] action failed', err && err.message);
+    return { error: err.message };
+  }
+});
+
+// Manual memory edit/delete from the dashboard — bus events propagate to HUD.
+ipcMain.handle('shadow:memory-list', () => {
+  if (!memoryEnabled) return [];
+  return require('./repos/memory').list({ limit: 100 });
+});
+ipcMain.handle('shadow:memory-edit', (_e, { id, text }) => {
+  if (!memoryEnabled) return { error: 'memory layer not enabled' };
+  return require('./repos/memory').update(id, { text });
+});
+ipcMain.handle('shadow:memory-delete', (_e, { id }) => {
+  if (!memoryEnabled) return { error: 'memory layer not enabled' };
+  return require('./repos/memory').remove(id);
+});
+
 ipcMain.on('shadow:set-focus', (_e, text) => {
   userFocus = (text || '').toString().slice(0, 500);
 });
@@ -234,13 +319,30 @@ app.whenReady().then(async () => {
   createWindow();
   createTray();
 
-  // Memory: route every saved row to the HUD writes feed.
+  // Local memory module: route every saved row to the HUD writes feed.
   memory.onSaved((row) => {
     send('signal:write', { verb: row.verb, text: row.text, ts: row.ts });
   });
   try { memory.start(); } catch (e) { console.error('[memory] start', e && e.message); }
 
   startLive();
+
+  // Hyperspell-backed memory engines (suggest + actions). Boot only when
+  // the env vars are set; harmless no-op otherwise.
+  if (memoryEnabled) {
+    try {
+      const profile = require('./model/profile');
+      const suggest = require('./suggest/engine');
+      const registry = require('./actions/registry');
+      registry.register(require('./actions/ic-memo'));
+      registry.register(require('./actions/sourcing-sheet'));
+      registry.register(require('./actions/founder-lookup'));
+      registry.register(require('./actions/market-check'));
+      registry.register(require('./actions/flag-deal'));
+      profile.start();
+      suggest.start();
+    } catch (e) { console.error('[engines] failed to start', e && e.message); }
+  }
 
   win.webContents.once('did-finish-load', () => {
     if (process.platform === 'darwin') {
