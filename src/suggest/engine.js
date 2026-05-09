@@ -7,6 +7,7 @@ const MemoryRepo = require('../repos/memory');
 const registry = require('../actions/registry');
 const { parseScreenSignal } = require('./vision-signal');
 const { scoreAction } = require('./vision-rank');
+const beliefsRepo = require('../repos/beliefs');
 
 const DEBOUNCE_MS = 1500;
 const RECENT_KEEP = 30;
@@ -48,9 +49,21 @@ async function pickActions(context, { proactive = false } = {}) {
   const companyHint = signal.entity || extractCompany(context) || 'this company';
   const allActions = registry.list();
 
-  // Behavioral signal: probe Hyperspell for past click/ignore per action_id.
+  // Behavioral signal: prefer the persisted ActionPreferenceAgent belief
+  // (sigmoid over learned click-net), else fall back to the Hyperspell
+  // click/ignore probe so cold-start behavior is unchanged.
+  let beliefByAction = new Map();
+  try {
+    const rows = beliefsRepo.list({ agent_id: 'action-preference' }) || [];
+    for (const r of rows) beliefByAction.set(r.topic, r.score);
+  } catch {}
+  const haveBeliefs = beliefByAction.size > 0;
+
   const probed = await Promise.all(
     allActions.map(async (a) => {
+      const fromBelief = beliefByAction.get(a.id);
+      if (fromBelief != null) return { action: a, raw: fromBelief, source: 'belief' };
+      if (haveBeliefs) return { action: a, raw: 0, source: 'belief' };
       try {
         const probe = await hs.search({
           scope: 'partner', partner: ctx.ME, firm: ctx.FIRM,
@@ -58,17 +71,19 @@ async function pickActions(context, { proactive = false } = {}) {
           sources: ['vault'],
         });
         const raw = probe.reduce((s, h) => s + (h.adjusted || 0), 0);
-        return { action: a, raw };
+        return { action: a, raw, source: 'hs' };
       } catch {
-        return { action: a, raw: 0 };
+        return { action: a, raw: 0, source: 'hs' };
       }
     })
   );
 
   // Normalize behavioral to [0,1] across this batch so it composes with vision.
   const maxRaw = probed.reduce((m, p) => Math.max(m, p.raw), 0);
-  const ranked = probed.map(({ action, raw }) => {
-    const behavioral = maxRaw > 0 ? raw / maxRaw : 0;
+  const ranked = probed.map(({ action, raw, source }) => {
+    const behavioral = source === 'belief'
+      ? Math.max(0, Math.min(1, raw))            // sigmoid score, already in [0,1]
+      : (maxRaw > 0 ? raw / maxRaw : 0);
     const vision = scoreAction(action, signal);
     const final = VISION_WEIGHT * vision + BEHAVIORAL_WEIGHT * behavioral;
     return { action, behavioral, vision, final };
@@ -207,9 +222,10 @@ function start() {
 }
 
 function getLastSuggestions() { return lastSuggestions; }
+function getLastScreen() { return lastScreen; }
 
 module.exports = {
-  start, clickSuggestion, getLastSuggestions, extractCompany,
+  start, clickSuggestion, getLastSuggestions, getLastScreen, extractCompany,
   bumpFromScreen, pause: pauseEngine, resume: resumeEngine,
   runProactive,
 };

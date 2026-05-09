@@ -36,7 +36,7 @@ function loop(name, baseMs, jitter, fn) {
   schedule();
 }
 
-function start({ suggest, bus, config, profile, MemoryRepo, extractCompany }) {
+function start({ suggest, bus, config, profile, MemoryRepo, extractCompany, reason }) {
   if (started) return;
   const cfg = (config && config.proactive) || {};
   if (cfg.enabled === false) {
@@ -84,10 +84,20 @@ function start({ suggest, bus, config, profile, MemoryRepo, extractCompany }) {
     loop('profileRefresh', cfg.profileRefreshMs, jitter, () => profile.refresh());
   }
 
+  // 4) Reasoning loop — observe → hypothesize → updateBelief across every
+  //    registered agent. Persists beliefs to ~/.shadow/memory.db.
+  const rcfg = (config && config.reasoning) || {};
+  if (reason && rcfg.enabled !== false && rcfg.intervalMs > 0) {
+    loop('reasoning', rcfg.intervalMs, jitter, async () => {
+      await reason.tickAll({ MemoryRepo, suggest }, { bus });
+    });
+  }
+
   console.log('[proactive] scheduler online', {
     suggestionsMs: cfg.suggestionsMs,
     memoryScanMs: cfg.memoryScanMs,
     profileRefreshMs: cfg.profileRefreshMs,
+    reasoningMs: rcfg.intervalMs || 0,
   });
 }
 

@@ -82,6 +82,13 @@ async function handleRequest(req, res) {
   if (req.method === 'GET' && u.pathname === '/artifacts') {
     return sendJson(res, 200, Artifacts.list({ limit: Number(u.query.limit) || 100 }));
   }
+  if (req.method === 'GET' && u.pathname === '/relations') {
+    return sendJson(res, 200, Artifacts.relations({
+      company: u.query.company,
+      type: u.query.type,
+      id: u.query.artifact,
+    }));
+  }
   if (req.method === 'GET' && /^\/artifacts\/[^/]+$/.test(u.pathname)) {
     const id = u.pathname.split('/')[2];
     const a = Artifacts.get(id);

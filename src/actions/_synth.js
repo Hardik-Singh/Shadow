@@ -1,6 +1,7 @@
 const config = require('../config');
 const MemoryRepo = require('../repos/memory');
 const Artifacts = require('../repos/artifacts');
+const { buildRelations } = require('../repos/artifact-relations');
 
 async function llmJson({ system, user, model, maxTokens = 1500 }) {
   if (!config.anthropic.enabled) {
@@ -213,6 +214,7 @@ function buildArtifact({ kind, company, llmOut, citations, stats, niaTotal, mode
     sources,
     citations: citations || [],
     flags,
+    relations: buildRelations({ company, kind, authorId: 'me' }),
     raw: {
       hyperspell_total: stats && stats.total,
       hyperspell_by_scope: stats && stats.by_scope,

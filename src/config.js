@@ -68,4 +68,9 @@ module.exports = {
     profileRefreshMs: Number(process.env.SHADOW_PROACTIVE_PROFILE_MS        || 600_000),
     jitter: 0.1,
   },
+  reasoning: {
+    enabled: process.env.SHADOW_REASONING_DISABLED ? false : true,
+    intervalMs: Number(process.env.SHADOW_REASONING_INTERVAL_MS || 30_000),
+    alpha: Number(process.env.SHADOW_REASONING_ALPHA || 0.3),
+  },
 };

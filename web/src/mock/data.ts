@@ -11,6 +11,13 @@ export type Citation = {
   summary?: string;
 };
 
+export type ArtifactRelation = {
+  type: 'company' | 'deal' | 'person' | 'teammate' | 'artifact-kind';
+  id: string;
+  label: string;
+  source?: 'inferred' | 'author' | 'reviewer' | string;
+};
+
 export const modes: Mode[] = ['VC', 'Hedge Fund', 'PE', 'IB'];
 
 export const newOptionsByMode: Record<Mode, string[]> = {
@@ -222,6 +229,7 @@ export type Artifact = {
   // Real artifacts produced by the Electron action handlers carry these:
   citations?: Citation[];
   flags?: string[];
+  relations?: ArtifactRelation[];
   raw?: { hyperspell_total?: number; nia_total?: number; [key: string]: unknown };
 };
 

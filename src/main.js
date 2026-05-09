@@ -493,12 +493,22 @@ app.whenReady().then(async () => {
       registry.register(require('./actions/flag-deal'));
       profile.start();
       suggest.start();
+
+      // Reasoning agents — register before scheduler boots so the first
+      // tick has a non-empty registry.
+      const reason = require('./reason');
+      const { ScreenFocusAgent } = require('./reason/agents/screen-focus');
+      const { ActionPreferenceAgent } = require('./reason/agents/action-preference');
+      reason.registry.register(new ScreenFocusAgent({ extractCompany: suggest.extractCompany }));
+      reason.registry.register(new ActionPreferenceAgent());
+
       try {
         const config = require('./config');
         require('./proactive/scheduler').start({
           suggest, bus, config, profile,
           MemoryRepo,
           extractCompany: suggest.extractCompany,
+          reason,
         });
       } catch (e) { console.error('[proactive] start', e && e.message); }
     } catch (e) { console.error('[engines] failed to start', e && e.message); }
