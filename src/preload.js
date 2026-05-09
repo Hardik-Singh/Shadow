@@ -13,6 +13,8 @@ contextBridge.exposeInMainWorld('shadow', {
   openInDashboard: (qs) => ipcRenderer.invoke('shadow:open-dashboard', qs),
   setFocus: (text) => ipcRenderer.send('shadow:set-focus', text),
   ask: (text) => ipcRenderer.send('shadow:ask', text),
+  setPaused: (paused) => ipcRenderer.send('shadow:set-paused', !!paused),
+  setMode: (mode) => ipcRenderer.send('shadow:set-mode', mode),
   recentMemory: (n) => ipcRenderer.invoke('shadow:recent-memory', n),
 
   // ─── Memory layer (Hyperspell-backed firm brain) ──────────────────
