@@ -355,10 +355,13 @@ function addArtifact(a) {
 // expose for future capture/DB pipeline to call: window.shadow.addArtifact(...)
 window.addArtifact = addArtifact;
 
-// seed a couple of pre-baked artifacts so the dashboard handoff is visible immediately
-addArtifact({ icon: '📝', name: 'IC memo · Acme Inc',          tag: 'VC', route: '?artifact=a1' });
-addArtifact({ icon: '🔎', name: 'Founder · Helix Compute',     tag: 'VC', route: '?artifact=a3' });
-addArtifact({ icon: '📊', name: 'Sourcing sheet · Mira Health', tag: 'VC', route: '?artifact=a2' });
+// seed a couple of pre-baked artifacts so the dashboard handoff is visible immediately.
+// these match the dashboard ids 1:1 — clicking opens the drawer for that artifact.
+addArtifact({ icon: '📝', name: 'IC memo · Acme Inc',           tag: 'VC',    route: '?artifact=a1'  });
+addArtifact({ icon: '🔎', name: 'Founder · Helix Compute',      tag: 'VC',    route: '?artifact=a3'  });
+addArtifact({ icon: '📊', name: 'Sourcing sheet · Mira Health',  tag: 'VC',    route: '?artifact=a2'  });
+addArtifact({ icon: '✉',  name: 'Email · Series A intro (Acme)', tag: 'EMAIL', route: '?artifact=a11' });
+addArtifact({ icon: '#',  name: 'Slack · #deals-infra (Helix)',  tag: 'SLACK', route: '?artifact=a12' });
 
 // ===== SUGGESTION CLICK =====
 function onSuggestion(text) {

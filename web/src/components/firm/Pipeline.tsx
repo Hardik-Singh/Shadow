@@ -1,5 +1,5 @@
-import { Deal, deals } from '../../mock/data';
-import { AvatarStack } from '../Avatars';
+import { Deal, deals, teammateById } from '../../mock/data';
+import { Avatar, AvatarStack } from '../Avatars';
 import VerdictPill from '../VerdictPill';
 import DealDetail from './DealDetail';
 
@@ -25,6 +25,7 @@ export default function Pipeline({ expandedId, onToggle }: Props) {
           const expanded = expandedId === d.id;
           const yours = yourVerdict(d);
           const team = d.verdicts.filter((v) => v.teammateId !== 'me').map((v) => v.teammateId);
+          const originator = teammateById(d.originatorId);
           return (
             <div key={d.id} className={`pipeline-block ${expanded ? 'expanded' : ''}`}>
               <button
@@ -33,8 +34,16 @@ export default function Pipeline({ expandedId, onToggle }: Props) {
                 aria-expanded={expanded}
               >
                 <div className="pipe-company">
-                  <span className="pipe-name">{d.company}</span>
-                  <span className="pipe-thesis">{d.thesis}</span>
+                  <div className="pipe-company-top">
+                    <span className="pipe-name">{d.company}</span>
+                    <span className="pipe-thesis">{d.thesis}</span>
+                  </div>
+                  {originator && (
+                    <span className="pipe-originator" title={`Originated by ${originator.name}`}>
+                      <Avatar teammate={originator} size="sm" />
+                      <span className="pipe-originator-text">by {originator.name}</span>
+                    </span>
+                  )}
                 </div>
                 <div className="pipe-yours">
                   {yours && <VerdictPill verdict={yours.verdict} />}
