@@ -48,15 +48,22 @@ async function run({ company } = {}) {
     }),
   ]);
 
-  const [companies, news, people] = await Promise.all([
+  // Wide Nia fan-out — every public surface that might inform an IC decision.
+  // All in parallel; per-call 8s timeout in the adapter caps total latency.
+  const [companies, news, github, tweets, blogs, research, pdfs, coinvestors] = await Promise.all([
     nia.web(`${co} comparable companies`, 'company'),
     nia.web(`${co} fundraise news`, 'news'),
     nia.web(`${co} founders`, 'github'),
+    nia.web(`${co} founders launch`, 'tweet'),
+    nia.web(`${co} founder essay writing`, 'blog'),
+    nia.web(`${co} market research analyst report`, 'research'),
+    nia.web(`${co} sector market size whitepaper`, 'pdf'),
+    nia.web(`${co} round investors lead`, 'news'),
   ]);
 
   const stats = hsContextStats([voiceOnCo, thesis, deckChunks, firmPriorMemos]);
-  const citations = mergeCitations(companies, news, people);
-  const niaTotal = (companies || []).length + (news || []).length + (people || []).length;
+  const citations = mergeCitations(companies, news, github, tweets, blogs, research, pdfs, coinvestors);
+  const niaTotal = citations.length;
 
   const userPrompt = [
     `COMPANY: ${co}`,
@@ -75,7 +82,7 @@ async function run({ company } = {}) {
     `FIRM MEMORY — prior firm-level context on space (${firmPriorMemos.length}):`,
     summarizeHits(firmPriorMemos, 'firm'),
     '',
-    `WORLD FACTS — company hits (${(companies || []).length}), news (${(news || []).length}), people (${(people || []).length}). See CITATIONS list below.`,
+    `WORLD FACTS — company ${(companies || []).length} · news ${(news || []).length} · github ${(github || []).length} · tweets ${(tweets || []).length} · blogs ${(blogs || []).length} · research ${(research || []).length} · pdfs ${(pdfs || []).length} · co-investors ${(coinvestors || []).length}. See CITATIONS list below.`,
     '',
     'Write the IC memo now.',
   ].join('\n');

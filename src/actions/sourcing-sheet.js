@@ -23,14 +23,17 @@ async function run({ company } = {}) {
     hs.search({ scope: 'partner', partner, firm, query: `${co} company details`, sources: ['vault'], k: 12, halfLifeHours: 24 }),
     hs.search({ scope: 'firm', partner, firm, query: `${co} sector firm context`, sources: ['vault'], k: 6, halfLifeHours: 8760 }),
   ]);
-  const [companies, news, people] = await Promise.all([
+  const [companies, news, people, tweets, blogs, research] = await Promise.all([
     nia.web(co, 'company'),
     nia.web(co, 'news'),
     nia.web(`${co} founders team`, 'github'),
+    nia.web(`${co} launch announcement`, 'tweet'),
+    nia.web(`${co} blog post`, 'blog'),
+    nia.web(`${co} sector market analyst`, 'research'),
   ]);
   const stats = hsContextStats([thesis, deck, firmCtx]);
-  const citations = mergeCitations(companies, news, people);
-  const niaTotal = (companies || []).length + (news || []).length + (people || []).length;
+  const citations = mergeCitations(companies, news, people, tweets, blogs, research);
+  const niaTotal = citations.length;
 
   const prompt = [
     `COMPANY: ${co}`,
@@ -38,7 +41,7 @@ async function run({ company } = {}) {
     `dig-areas (${thesis.length}):`, summarizeHits(thesis),
     `deck (${deck.length}):`, summarizeHits(deck),
     `firm context (${firmCtx.length}):`, summarizeHits(firmCtx),
-    `world hits — company ${(companies || []).length} · news ${(news || []).length} · people ${(people || []).length}`,
+    `world hits — company ${(companies || []).length} · news ${(news || []).length} · people ${(people || []).length} · tweets ${(tweets || []).length} · blogs ${(blogs || []).length} · research ${(research || []).length}`,
     'Write the sourcing sheet now.',
   ].join('\n');
 
