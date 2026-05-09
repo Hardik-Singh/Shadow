@@ -26,6 +26,15 @@
         <div class="header-right">
           <span class="session" id="session">0:00</span>
           <span class="dot" id="dot"></span>
+          <button class="icon-btn nodrag pause" id="pause" title="Pause LLM processing" aria-label="Pause LLM processing">
+            <svg class="ico-pause" viewBox="0 0 24 24" width="12" height="12" fill="currentColor" stroke="none">
+              <rect x="6" y="5" width="4" height="14" rx="1"/>
+              <rect x="14" y="5" width="4" height="14" rx="1"/>
+            </svg>
+            <svg class="ico-play" viewBox="0 0 24 24" width="12" height="12" fill="currentColor" stroke="none">
+              <polygon points="7,5 19,12 7,19"/>
+            </svg>
+          </button>
           <button class="icon-btn nodrag mute" id="mute" title="Mute mic" aria-label="Mute microphone">
             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <rect x="9" y="3" width="6" height="12" rx="3"/>
@@ -41,49 +50,68 @@
 
       <div class="scroll">
         <!-- WATCHING NOW -->
-        <section class="card">
-          <div class="card-head">
+        <section class="card" id="card-watching">
+          <div class="card-head nodrag" data-toggle="card-watching">
             <span class="label">watching now</span>
-            <div class="meter nodrag" id="meter">
-              <span></span><span></span><span></span><span></span><span></span>
-              <span></span><span></span><span></span><span></span><span></span>
+            <div class="head-right">
+              <div class="meter nodrag" id="meter">
+                <span></span><span></span><span></span><span></span><span></span>
+                <span></span><span></span><span></span><span></span><span></span>
+              </div>
+              <span class="chevron" aria-hidden="true">▾</span>
             </div>
           </div>
-          <div class="watching">
-            <div class="row hidden" id="seeing-row"><span class="ico">👁</span><span id="seeing"></span></div>
-            <div class="row hidden" id="hearing-row"><span class="ico">🎙</span><span class="quote" id="hearing"></span></div>
+          <div class="card-body watching">
+            <div class="row hidden" id="seeing-row"><span class="ico">seeing</span><span id="seeing"></span></div>
+            <div class="row hidden" id="hearing-row"><span class="ico">hearing</span><span class="quote" id="hearing"></span></div>
             <div class="row signal"><span class="signal-dot"></span><span id="signal">waiting…</span></div>
           </div>
         </section>
 
         <!-- SUGGESTIONS -->
-        <section class="card">
-          <div class="card-head"><span class="label">shadow thinks you want to</span></div>
-          <div class="pills" id="pills"></div>
-        </section>
-
-        <!-- MEMORY WRITES (live) -->
-        <section class="card">
-          <div class="card-head">
-            <span class="label">memory writes <span class="badge live">live</span></span>
+        <section class="card" id="card-suggestions">
+          <div class="card-head nodrag" data-toggle="card-suggestions">
+            <span class="label">shadow thinks you want to</span>
+            <span class="chevron" aria-hidden="true">▾</span>
           </div>
-          <ul class="feed" id="writes"></ul>
+          <div class="card-body">
+            <div class="pills" id="pills"></div>
+          </div>
         </section>
 
         <!-- LIVE THOUGHTS -->
-        <section class="card">
-          <div class="card-head">
+        <section class="card" id="card-thoughts">
+          <div class="card-head nodrag" data-toggle="card-thoughts">
             <span class="label">live thoughts <span class="badge live">live</span></span>
+            <span class="chevron" aria-hidden="true">▾</span>
           </div>
-          <ul class="thoughts" id="thoughts"></ul>
+          <div class="card-body">
+            <ul class="thoughts" id="thoughts"></ul>
+          </div>
         </section>
 
         <!-- ARTIFACTS -->
-        <section class="card">
-          <div class="card-head"><span class="label">artifacts this session</span></div>
-          <ul class="artifacts" id="artifacts">
-            <li class="empty">no artifacts yet — shadow will add them as you work</li>
-          </ul>
+        <section class="card" id="card-artifacts">
+          <div class="card-head nodrag" data-toggle="card-artifacts">
+            <span class="label">artifacts this session</span>
+            <span class="chevron" aria-hidden="true">▾</span>
+          </div>
+          <div class="card-body">
+            <ul class="artifacts" id="artifacts">
+              <li class="empty">no artifacts yet — shadow will add them as you work</li>
+            </ul>
+          </div>
+        </section>
+
+        <!-- MEMORY WRITES (live) -->
+        <section class="card" id="card-writes">
+          <div class="card-head nodrag" data-toggle="card-writes">
+            <span class="label">memory writes <span class="badge live">live</span></span>
+            <span class="chevron" aria-hidden="true">▾</span>
+          </div>
+          <div class="card-body">
+            <ul class="feed" id="writes"></ul>
+          </div>
         </section>
       </div>
 

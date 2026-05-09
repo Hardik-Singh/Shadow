@@ -125,6 +125,20 @@ class LiveSession extends EventEmitter {
     });
   }
 
+  // Scene-setting context: passes background info (e.g. Hyperspell-derived
+  // partner/firm memory) into the session without expecting a reply. The
+  // model picks this up on its next turn, when it actually has a reason to
+  // speak.
+  injectSystemContext(text) {
+    if (!text) return;
+    this._sendRaw({
+      clientContent: {
+        turns: [{ role: 'user', parts: [{ text: '[background context — do not reply]\n' + text }] }],
+        turnComplete: false,
+      },
+    });
+  }
+
   close() {
     if (this.ws) {
       try { this.ws.close(); } catch {}
