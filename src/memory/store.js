@@ -25,6 +25,18 @@ function open() {
     );
     CREATE INDEX IF NOT EXISTS signals_ts_idx ON signals(ts);
     CREATE INDEX IF NOT EXISTS signals_session_idx ON signals(session_id);
+
+    CREATE TABLE IF NOT EXISTS beliefs (
+      id             INTEGER PRIMARY KEY AUTOINCREMENT,
+      agent_id       TEXT    NOT NULL,
+      topic          TEXT    NOT NULL,
+      score          REAL    NOT NULL,
+      evidence_count INTEGER NOT NULL DEFAULT 1,
+      last_updated   INTEGER NOT NULL,
+      meta           TEXT,
+      UNIQUE(agent_id, topic)
+    );
+    CREATE INDEX IF NOT EXISTS beliefs_agent_idx ON beliefs(agent_id, last_updated);
   `);
   sessionId = `s_${Date.now().toString(36)}`;
   return db;
