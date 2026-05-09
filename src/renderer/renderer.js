@@ -5,9 +5,12 @@ const dotEl = document.getElementById('dot');
 const bars = Array.from(document.querySelectorAll('#meter span'));
 const sessionEl = document.getElementById('session');
 const seeingEl = document.getElementById('seeing');
+const seeingRow = document.getElementById('seeing-row');
 const hearingEl = document.getElementById('hearing');
+const hearingRow = document.getElementById('hearing-row');
 const signalEl = document.getElementById('signal');
 const writesEl = document.getElementById('writes');
+const thoughtsEl = document.getElementById('thoughts');
 const pillsEl = document.getElementById('pills');
 const artifactsEl = document.getElementById('artifacts');
 const modeBtn = document.getElementById('mode');
@@ -16,8 +19,11 @@ const promptForm = document.getElementById('prompt-form');
 const promptInput = document.getElementById('prompt');
 
 // ===== MIC =====
-let muted = false;
+// Default to muted so other audio tools (Wispr Flow, etc.) keep working.
+// We don't even open the mic stream until the user unmutes, so we don't hold a lock.
+let muted = true;
 let stream = null;
+let micStarted = false;
 const SPEAKING_THRESHOLD = 0.04;
 const SILENCE_HOLD_MS = 500;
 let speakingNow = false;
@@ -39,6 +45,37 @@ async function startMic() {
   source.connect(analyser);
   const buf = new Float32Array(analyser.fftSize);
   let lastSpokeAt = 0;
+
+  // ---- PCM 16kHz mono pump to Gemini Live ----
+  // ScriptProcessor is deprecated but still works in Electron and avoids the
+  // worklet-module-loading dance. Buffer size 4096 ≈ 85ms at native SR.
+  const proc = ctx.createScriptProcessor(4096, 1, 1);
+  const inSR = ctx.sampleRate;
+  const outSR = 16000;
+  const ratio = inSR / outSR;
+  source.connect(proc);
+  // Must connect to destination (silently) for ScriptProcessor to fire.
+  const sink = ctx.createGain();
+  sink.gain.value = 0;
+  proc.connect(sink);
+  sink.connect(ctx.destination);
+
+  proc.onaudioprocess = (e) => {
+    if (muted || !window.shadow || !window.shadow.sendAudio) return;
+    const input = e.inputBuffer.getChannelData(0);
+    const outLen = Math.floor(input.length / ratio);
+    const out = new Int16Array(outLen);
+    for (let i = 0; i < outLen; i++) {
+      const s = input[Math.floor(i * ratio)];
+      const c = Math.max(-1, Math.min(1, s));
+      out[i] = c < 0 ? c * 0x8000 : c * 0x7fff;
+    }
+    // base64 the Int16Array bytes
+    const bytes = new Uint8Array(out.buffer);
+    let bin = '';
+    for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    window.shadow.sendAudio(btoa(bin));
+  };
 
   function tick() {
     if (!muted) {
@@ -71,10 +108,18 @@ muteBtn.addEventListener('click', () => {
   hudEl.classList.toggle('muted', muted);
   dotEl.classList.toggle('muted', muted);
   muteBtn.title = muted ? 'Unmute mic' : 'Mute mic';
+  if (!muted && !micStarted) {
+    micStarted = true;
+    startMic();
+    return;
+  }
   if (stream) stream.getAudioTracks().forEach((t) => (t.enabled = !muted));
 });
 
-startMic();
+// Reflect muted-by-default visual state on launch.
+hudEl.classList.add('muted');
+dotEl.classList.add('muted');
+muteBtn.title = 'Unmute mic';
 
 // ===== SESSION TIMER =====
 const sessionStart = Date.now();
@@ -166,47 +211,142 @@ setInterval(() => {
   const [verb, text] = WRITES_POOL[writeIdx % WRITES_POOL.length];
   pushWrite(verb, text);
   writeIdx++;
-}, 4500);
+}, 7000);
 // seed a couple immediately
 pushWrite('saving', 'session started — VC mode');
 setTimeout(() => pushWrite('saving', 'observing pitch deck: Acme Inc'), 800);
 
-// ===== WATCHING (cycling mock screen + voice state) =====
-const SEEING_POOL = [
-  'team slide · Series A deck',
-  'market size slide · scrolling fast',
-  'CTO bio · LinkedIn open in tab',
-  'financials tab · CAC table',
-  'competitor matrix slide',
+// ===== LIVE THOUGHTS (stream-of-consciousness) =====
+const THOUGHTS_POOL = [
+  'this CTO profile is the kind they usually like — ex-Stripe pattern',
+  'TAM number feels round. round = made up.',
+  'they spent 32s on the team slide. that\'s positive.',
+  'cofounders met 8 months ago — partner always flags this',
+  'CAC table is missing payback period. they\'ll ask.',
+  'B2B infra · their highest-conviction sector this quarter',
+  'no mention of competitors in the deck — suspicious or confident?',
+  'partner muttered "feels expensive" — third time today',
+  'reviewing the founder\'s github · 340 commits last 90 days',
+  'cross-referencing this team to Series A precedents',
+  'this looks adjacent to a deal they passed on in March',
+  'consumer-play weight is low · this one is B2B · alignment good',
+  'no churn metrics. they always ask about churn.',
+  'thesis match: technical founder + B2B infra + early-stage = strong',
 ];
-const HEARING_POOL = [
-  '"i don\'t trust this CAC number"',
-  '"hmm this TAM feels made up"',
-  '"short cofounder relationship, flag that"',
-  '"i wonder if they\'ve talked to stripe"',
-  '"this team is actually really strong"',
-];
-const SIGNAL_POOL = [
-  'capturing signal',
-  'updating profile weights',
-  'cross-referencing memory',
-  'checking comparable deals',
-  'idle — waiting for input',
-];
-let seeIdx = 0, hearIdx = 0, sigIdx = 0;
-setInterval(() => { seeingEl.textContent = SEEING_POOL[++seeIdx % SEEING_POOL.length]; }, 6000);
-setInterval(() => { if (!speakingNow) hearingEl.textContent = HEARING_POOL[++hearIdx % HEARING_POOL.length]; }, 5500);
-setInterval(() => { signalEl.textContent = SIGNAL_POOL[++sigIdx % SIGNAL_POOL.length]; }, 3500);
+function pushThought(text) {
+  const li = document.createElement('li');
+  li.textContent = text;
+  thoughtsEl.prepend(li);
+  while (thoughtsEl.children.length > 5) thoughtsEl.lastChild.remove();
+}
+let thoughtIdx = 0;
+setInterval(() => {
+  pushThought(THOUGHTS_POOL[thoughtIdx % THOUGHTS_POOL.length]);
+  thoughtIdx++;
+}, 5200);
+pushThought(THOUGHTS_POOL[0]);
+thoughtIdx = 1;
+
+// ===== WATCHING (real signals only — rows hidden until first real text) =====
+if (window.shadow) {
+  window.shadow.onSeeing((t) => {
+    if (!t) return;
+    seeingEl.textContent = t;
+    seeingRow.classList.remove('hidden');
+    seeingEl.classList.add('flash');
+    setTimeout(() => seeingEl.classList.remove('flash'), 600);
+  });
+  window.shadow.onHearing((t) => {
+    if (!t) return;
+    hearingEl.textContent = `"${t}"`;
+    hearingRow.classList.remove('hidden');
+  });
+  window.shadow.onStatus((t) => { signalEl.textContent = t; });
+}
+
+// ===== SCREEN CAPTURE → Gemini Live =====
+async function startScreenCapture() {
+  if (!window.shadow) return;
+  try {
+    const sources = await window.shadow.getSources();
+    if (!sources || !sources.length) { console.warn('no screen sources'); return; }
+    const sourceId = sources[0].id;
+    const dispStream = await navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: {
+        mandatory: {
+          chromeMediaSource: 'desktop',
+          chromeMediaSourceId: sourceId,
+          maxWidth: 1920,
+          maxHeight: 1080,
+        },
+      },
+    });
+    const video = document.createElement('video');
+    video.muted = true;
+    video.playsInline = true;
+    video.srcObject = dispStream;
+    await video.play();
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const MAX_EDGE = 1024;
+
+    setInterval(() => {
+      const vw = video.videoWidth, vh = video.videoHeight;
+      if (!vw || !vh) return;
+      const scale = Math.min(1, MAX_EDGE / Math.max(vw, vh));
+      const w = Math.round(vw * scale);
+      const h = Math.round(vh * scale);
+      if (canvas.width !== w) canvas.width = w;
+      if (canvas.height !== h) canvas.height = h;
+      ctx.drawImage(video, 0, 0, w, h);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+      const comma = dataUrl.indexOf(',');
+      if (comma < 0) return;
+      window.shadow.sendFrame(dataUrl.slice(comma + 1));
+    }, 1000);
+  } catch (err) {
+    console.error('screen capture error', err);
+    signalEl.textContent = 'screen capture denied — grant permission';
+  }
+}
+startScreenCapture();
+
+// ===== DASHBOARD BRIDGE =====
+function openDashboard(qs) {
+  if (window.shadow && window.shadow.openInDashboard) {
+    window.shadow.openInDashboard(qs || '');
+  }
+}
+
+// suggestion text → dashboard route. Anything not mapped opens the home page.
+const SUGGESTION_ROUTE = {
+  'look up CTO on github':   '?artifact=a3', // Helix founder background
+  'check TAM comparables':   '?artifact=a1', // Acme IC memo (TAM section)
+  'generate sourcing sheet': '?artifact=a2', // Mira sourcing sheet
+  'summarize earnings call': '?view=firm',
+  'compare to last quarter': '?view=firm',
+  'draft trade note':        '?view=firm',
+  'build LBO sketch':        '?view=firm',
+  'summarize CIM':           '?view=firm',
+  'flag mgmt risks':         '?view=firm',
+  'build comp table':        '?view=firm',
+  'pull precedents':         '?view=firm',
+  'draft pitch section':     '?view=firm',
+};
 
 // ===== ARTIFACTS =====
+// each artifact carries a route so clicking it deep-links into the dashboard
 const artifacts = [];
-const EMPTY_ARTIFACT_HTML = '<li class="empty">no artifacts yet — shadow will add them as you work</li>';
 
 function addArtifact(a) {
   artifacts.unshift(a);
   const li = document.createElement('li');
-  li.className = 'new';
+  li.className = 'new clickable';
+  li.title = 'open in dashboard';
   li.innerHTML = `<span>${a.icon}</span><span>${a.name}</span><span class="tag">${a.tag}</span>`;
+  li.addEventListener('click', () => openDashboard(a.route || ''));
   if (artifactsEl.querySelector('.empty')) artifactsEl.innerHTML = '';
   artifactsEl.prepend(li);
   while (artifactsEl.children.length > 12) artifactsEl.lastChild.remove();
@@ -215,17 +355,26 @@ function addArtifact(a) {
 // expose for future capture/DB pipeline to call: window.shadow.addArtifact(...)
 window.addArtifact = addArtifact;
 
+// seed a couple of pre-baked artifacts so the dashboard handoff is visible immediately
+addArtifact({ icon: '📝', name: 'IC memo · Acme Inc',          tag: 'VC', route: '?artifact=a1' });
+addArtifact({ icon: '🔎', name: 'Founder · Helix Compute',     tag: 'VC', route: '?artifact=a3' });
+addArtifact({ icon: '📊', name: 'Sourcing sheet · Mira Health', tag: 'VC', route: '?artifact=a2' });
+
 // ===== SUGGESTION CLICK =====
 function onSuggestion(text) {
   pushWrite('action', `clicked "${text}"`);
-  addArtifact({ icon: '⚡', name: text, tag: MODES[modeIdx] });
+  const route = SUGGESTION_ROUTE[text] || '';
+  addArtifact({ icon: '⚡', name: text, tag: MODES[modeIdx], route });
+  openDashboard(route);
 }
 
-// ===== PROMPT =====
+// ===== PROMPT — sets the focus the live feed should weight toward =====
 promptForm.addEventListener('submit', (e) => {
   e.preventDefault();
   const v = promptInput.value.trim();
   if (!v) return;
-  pushWrite('prompt', v);
+  pushWrite('focus', v);
+  if (window.shadow && window.shadow.setFocus) window.shadow.setFocus(v);
   promptInput.value = '';
+  promptInput.placeholder = `watching for: ${v}`;
 });
