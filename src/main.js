@@ -82,7 +82,12 @@ const BASE_PROMPT = [
   'BAD outputs — never produce these:',
   '  "Chrome"   "browser"   "a website"   "PDF document"   "VS Code"   "an editor"',
   '',
-  'No prose. No preamble. No quotes around the line. No emojis. ONE line only.',
+  'No prose. No preamble. No quotes around the line. No emojis.',
+  '',
+  'After that line, output a SECOND line with structured fields the system parses:',
+  '  SIGNAL: doc_type=<one of pitch_deck, spreadsheet, email, doc, code, browser, chat, calendar, other> | entity=<company/person/topic on screen, or —> | intents=<1-3 from evaluate, source, research, write, communicate, decide, browse, comma-separated>',
+  'Example second line: SIGNAL: doc_type=pitch_deck | entity=Acme Inc | intents=evaluate,research',
+  'TWO lines total. No extra lines.',
 ].join('\n');
 
 function buildPrompt() {
@@ -126,7 +131,8 @@ async function captionFrame(b64Jpeg) {
     }
     const j = await res.json();
     const text = (j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts || [])
-      .map((p) => p.text || '').join('').replace(/\s+/g, ' ').trim();
+      .map((p) => p.text || '').join('')
+      .split('\n').map((l) => l.replace(/[ \t]+/g, ' ').trim()).filter(Boolean).join('\n');
     if (text) {
       send('signal:seeing', text);
       send('signal:status', 'connected');
@@ -428,6 +434,14 @@ app.whenReady().then(async () => {
       } catch (e) { console.error('[proactive] start', e && e.message); }
     } catch (e) { console.error('[engines] failed to start', e && e.message); }
   }
+
+  // Dashboard HTTP/SSE bridge. Always on (localhost-only); the web app falls
+  // back to mock data when this isn't reachable, so it's safe to skip if it
+  // can't bind.
+  try {
+    const dashboardApi = require('./server/dashboard-api');
+    dashboardApi.start({ port: Number(process.env.SHADOW_API_PORT) || 4310 });
+  } catch (e) { console.warn('[dashboard-api] start failed', e && e.message); }
 
   win.webContents.once('did-finish-load', () => {
     if (process.platform === 'darwin') {

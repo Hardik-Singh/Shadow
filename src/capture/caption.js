@@ -1,8 +1,13 @@
 const config = require('../config');
 
-const PROMPT =
-  'In one sentence, describe what the user is looking at. Focus on entity names ' +
-  '(companies, people), document type, and which slide/section. No preamble. No quotes.';
+const PROMPT = [
+  'In one sentence, describe what the user is looking at. Focus on entity names',
+  '(companies, people), document type, and which slide/section. No preamble. No quotes.',
+  '',
+  'After that sentence, output a SECOND line with structured fields:',
+  '  SIGNAL: doc_type=<one of pitch_deck, spreadsheet, email, doc, code, browser, chat, calendar, other> | entity=<company/person/topic, or —> | intents=<1-3 from evaluate, source, research, write, communicate, decide, browse, comma-separated>',
+  'TWO lines total.',
+].join('\n');
 
 async function captionImage(pngBuffer) {
   if (!config.anthropic.enabled) {
@@ -41,7 +46,14 @@ async function captionImage(pngBuffer) {
     const data = await res.json();
     const text =
       (data.content || []).map((b) => b.text || '').join(' ').trim() || 'screen content';
-    return text.replace(/\s+/g, ' ').slice(0, 400);
+    // Preserve newlines (the SIGNAL: line lives on its own line). Collapse
+    // runs of horizontal whitespace within each line.
+    return text
+      .split('\n')
+      .map((l) => l.replace(/[ \t]+/g, ' ').trim())
+      .filter(Boolean)
+      .join('\n')
+      .slice(0, 600);
   } catch (err) {
     console.warn('[caption] failed', err && err.message);
     return 'screen content (caption error)';

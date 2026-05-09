@@ -1,5 +1,6 @@
-import { Artifact, artifacts as ALL } from '../mock/data';
+import { Artifact } from '../mock/data';
 import ArtifactCard from './ArtifactCard';
+import { useArtifacts } from '../lib/use-artifacts';
 
 type Props = {
   onOpen: (a: Artifact) => void;
@@ -7,6 +8,7 @@ type Props = {
 };
 
 export default function MyArtifacts({ onOpen, pending = [] }: Props) {
+  const ALL = useArtifacts();
   const list = ALL.filter((a) => a.authorId === 'me');
   const total = list.length + pending.length;
 

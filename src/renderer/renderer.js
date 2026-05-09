@@ -421,7 +421,9 @@ if (window.shadow && window.shadow.onArtifact) {
       market_check: 'Market check',
       flag: 'Flagged',
     };
-    addArtifact({ name: `${co} · ${labels[a.kind] || a.kind}`, tag: 'NEW' });
+    const artifactId = a.data && a.data.artifactId;
+    const route = artifactId ? `?artifact=${encodeURIComponent(artifactId)}` : '';
+    addArtifact({ name: `${co} · ${labels[a.kind] || a.kind}`, tag: 'NEW', route });
     const stats = a.data && a.data.sources;
     if (stats && stats.hyperspell_total != null) {
       pushWrite('synth', `${labels[a.kind] || a.kind}: drew ${stats.hyperspell_total} memories from hyperspell` + (stats.nia_total ? ` + ${stats.nia_total} from nia` : ''));

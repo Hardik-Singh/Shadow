@@ -1,7 +1,15 @@
 export type Mode = 'VC' | 'Hedge Fund' | 'PE' | 'IB';
 export type View = 'mine' | 'firm';
 export type Verdict = 'invest' | 'investigate' | 'pass';
-export type SourceKind = 'slack' | 'email' | 'notion' | 'calendar' | 'prior';
+export type SourceKind = 'slack' | 'email' | 'notion' | 'calendar' | 'prior' | 'nia';
+
+export type Citation = {
+  id?: string;
+  kind: 'web' | 'github' | 'doc';
+  url: string;
+  title: string;
+  summary?: string;
+};
 
 export const modes: Mode[] = ['VC', 'Hedge Fund', 'PE', 'IB'];
 
@@ -93,9 +101,13 @@ export type Artifact = {
   body: string;            // expanded body shown in detail drawer
   sources: SourceKind[];
   status?: Status;         // tag — final by default
-  bodyKind?: 'text' | 'email' | 'slack';
+  bodyKind?: 'text' | 'email' | 'slack' | 'html';
   email?: { subject: string; messages: EmailMessage[] };
   slack?: { channel: string; messages: SlackMessage[] };
+  // Real artifacts produced by the Electron action handlers carry these:
+  citations?: Citation[];
+  flags?: string[];
+  raw?: { hyperspell_total?: number; nia_total?: number; [key: string]: unknown };
 };
 
 export const artifacts: Artifact[] = [
@@ -1149,4 +1161,5 @@ export const sourceLabel: Record<SourceKind, string> = {
   notion:   'Notion',
   calendar: 'Calendar',
   prior:    'Prior deals',
+  nia:      'World (Nia)',
 };

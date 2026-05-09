@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Artifact, artifacts } from '../mock/data';
+import { Artifact } from '../mock/data';
+import { useArtifacts } from '../lib/use-artifacts';
 import MemorySummary from './MemorySummary';
 import SignalChips from './SignalChips';
 import ShadowUpdates from './ShadowUpdates';
@@ -16,12 +17,13 @@ type Props = {
 
 export default function MyShadowTab({ onOpenInFirm, initialArtifactId, pending }: Props) {
   const [open, setOpen] = useState<Artifact | null>(null);
+  const all = useArtifacts();
 
   useEffect(() => {
     if (!initialArtifactId) return;
-    const a = artifacts.find((x) => x.id === initialArtifactId);
+    const a = all.find((x) => x.id === initialArtifactId);
     if (a) setOpen(a);
-  }, [initialArtifactId]);
+  }, [initialArtifactId, all]);
 
   return (
     <div className="mx-auto grid max-w-[1280px] gap-x-12 gap-y-12 px-6 py-10 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">

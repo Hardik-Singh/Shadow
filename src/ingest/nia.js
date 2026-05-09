@@ -7,12 +7,21 @@
 // Body: { mode: 'web' | 'universal' | 'deep' | 'query', query, num_results?, category? }
 // Response: { github_repos: [...], documentation: [...], other_content: [{url,title,summary}], total_results }
 
+const crypto = require('crypto');
 const config = require('../config');
 
 const BASE = (config.nia.base && config.nia.base.replace(/\/$/, '')) || 'https://apigcp.trynia.ai/v2';
 const KEY = config.nia.apiKey;
 const ENABLED = config.nia.enabled;
 const TIMEOUT_MS = 8000;
+const DEBUG = !!process.env.NIA_DEBUG;
+
+const STATS = { callCount: 0, hitCount: 0, errorCount: 0 };
+
+function hitId(url, title) {
+  const seed = (url || '') + '|' + (title || '');
+  return 'nia_' + crypto.createHash('md5').update(seed).digest('hex').slice(0, 10);
+}
 
 async function withTimeout(p, ms, label) {
   return Promise.race([
@@ -24,38 +33,28 @@ async function withTimeout(p, ms, label) {
 function flattenHits(data) {
   if (!data) return [];
   const hits = [];
-  for (const item of data.github_repos || []) {
+  const push = (kind, item) => {
+    const url = item.url || item.html_url;
+    const title = item.title || item.full_name || url;
+    if (!url && !title) return;
     hits.push({
-      kind: 'github',
-      url: item.url || item.html_url,
-      title: item.title || item.full_name,
-      summary: item.summary || item.description || '',
+      id: hitId(url, title),
+      kind,
+      url,
+      title,
+      summary: item.summary || item.description || item.content || '',
       score: item.score,
     });
-  }
-  for (const item of data.documentation || []) {
-    hits.push({
-      kind: 'doc',
-      url: item.url,
-      title: item.title,
-      summary: item.summary || item.content || '',
-      score: item.score,
-    });
-  }
-  for (const item of data.other_content || []) {
-    hits.push({
-      kind: 'web',
-      url: item.url,
-      title: item.title,
-      summary: item.summary || '',
-      score: item.score,
-    });
-  }
+  };
+  for (const item of data.github_repos || []) push('github', item);
+  for (const item of data.documentation || []) push('doc', item);
+  for (const item of data.other_content || []) push('web', item);
   return hits;
 }
 
 async function callSearch(body, label = 'nia') {
   if (!ENABLED) return { github_repos: [], documentation: [], other_content: [], total_results: 0 };
+  STATS.callCount += 1;
   try {
     const res = await withTimeout(
       fetch(`${BASE}/search`, {
@@ -67,8 +66,13 @@ async function callSearch(body, label = 'nia') {
       label
     );
     if (!res.ok) throw new Error(`${label} ${res.status}`);
-    return await res.json();
+    const json = await res.json();
+    const n = (json.github_repos || []).length + (json.documentation || []).length + (json.other_content || []).length;
+    STATS.hitCount += n;
+    if (DEBUG) console.log(`[nia] ${label} → ${n} hits`);
+    return json;
   } catch (err) {
+    STATS.errorCount += 1;
     console.warn(`[nia] ${label} failed:`, err && err.message);
     return { github_repos: [], documentation: [], other_content: [], total_results: 0 };
   }
@@ -122,7 +126,7 @@ async function multiQuery(reqs) {
 }
 
 function diagnostics() {
-  return { enabled: ENABLED, base: BASE };
+  return { enabled: ENABLED, base: BASE, ...STATS };
 }
 
 module.exports = {
