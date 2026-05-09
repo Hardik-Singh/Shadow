@@ -9,6 +9,9 @@ import { runDemoAction } from './lib/artifacts-api';
 
 function readDeepLink(): { view: View; artifactId: string | null; dealId: string | null } {
   const p = new URLSearchParams(window.location.search);
+  if (window.location.pathname === '/firm/nozomio') {
+    return { view: 'firm', artifactId: null, dealId: 'd6' };
+  }
   const dealId = p.get('deal');
   const artifactId = p.get('artifact');
   if (dealId && deals.find((d) => d.id === dealId)) {

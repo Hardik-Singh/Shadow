@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, screen, nativeImage, systemPreferences, ipcMain, desktopCapturer, shell } = require('electron');
+const { app, BrowserWindow, Tray, Menu, screen, nativeImage, systemPreferences, ipcMain, desktopCapturer, shell, globalShortcut } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { LiveSession } = require('./live/session');
@@ -20,6 +20,13 @@ const memory = require('./memory');
     }
   } catch (e) { console.error('[env]', e); }
 })();
+
+if (!process.env.HYPERSPELL_API_KEY || !process.env.HYPERSPELL_BASE || !process.env.HYPERSPELL_USER_ID) {
+  process.env.HYPERSPELL_API_KEY ||= 'sk-test-mock';
+  process.env.HYPERSPELL_BASE ||= 'mock://local';
+  process.env.HYPERSPELL_USER_ID ||= 'hardik';
+  console.warn('[env] using mock Hyperspell for local demo');
+}
 
 // ─── Memory layer (Hyperspell-backed) ─────────────────────────────────
 // Defer requires until we know HYPERSPELL_API_KEY is set — config.js exits
@@ -59,6 +66,9 @@ let live = null;
 let liveLastFrameAt = 0;
 let liveLastContextAt = 0;
 let paused = false;
+let demoNozomioStage = 0;
+const demoThoughtLastAt = new Map();
+let liveFailureCount = 0;
 const LIVE_FRAME_INTERVAL_MS = 5000;
 const LIVE_CONTEXT_INTERVAL_MS = 12000;
 
@@ -102,6 +112,42 @@ function send(ch, payload) {
   win.webContents.send(ch, payload);
 }
 
+function triggerNozomioDemo(source, signal) {
+  if (process.env.SHADOW_DEMO_NOZOMIO === '0') return;
+  const stage = demoNozomioStage === 0 ? 1 : demoNozomioStage === 1 ? 2 : null;
+  if (!stage) return;
+  if (stage === 2 && source === 'vision') {
+    const keyword = signal && signal.keyword;
+    if (!['deck', '.pdf', 'slide'].includes(keyword)) return;
+  }
+  demoNozomioStage = stage;
+  send('demo:nozomio', {
+    stage,
+    source,
+    keyword: signal && signal.keyword,
+    raw: signal && signal.raw,
+  });
+}
+
+function maybeSendDemoThought(text) {
+  if (process.env.SHADOW_DEMO_NOZOMIO === '0') return;
+  try {
+    const { detectDemoThoughtSignal } = require('./suggest/vision-signal');
+    const thought = detectDemoThoughtSignal(text);
+    if (!thought) return;
+    const now = Date.now();
+    const last = demoThoughtLastAt.get(thought.id) || 0;
+    if (now - last < 8000) return;
+    demoThoughtLastAt.set(thought.id, now);
+    send('signal:thought', {
+      proactive: true,
+      source: 'vision',
+      text: thought.text,
+      sources: { label: thought.label },
+    });
+  } catch {}
+}
+
 async function captionFrame(b64Jpeg) {
   if (paused) return;
   const key = process.env.GEMINI_API_KEY;
@@ -136,6 +182,12 @@ async function captionFrame(b64Jpeg) {
     if (text) {
       send('signal:seeing', text);
       send('signal:status', 'connected');
+      maybeSendDemoThought(text);
+      try {
+        const { detectNozomioDemoSignal } = require('./suggest/vision-signal');
+        const demoSignal = detectNozomioDemoSignal(text);
+        if (demoSignal) triggerNozomioDemo('vision', demoSignal);
+      } catch {}
       // Local fast-path memory (drives signal:write feed in HUD).
       memory.noteScreen(text);
       // Hyperspell mirror — partner vault + firm vault. Silent: the local
@@ -199,6 +251,7 @@ function startLive() {
   if (live) { try { live.close(); } catch {} }
   live = new LiveSession(key);
   live.on('ready', () => {
+    liveFailureCount = 0;
     send('signal:status', 'live');
   });
   live.on('transcript', (text) => {
@@ -206,6 +259,7 @@ function startLive() {
     memory.noteTranscript(text);
   });
   live.on('model_response', (text) => {
+    if (process.env.SHADOW_LIVE_THOUGHTS !== '1') return;
     // Attach the most recent Hyperspell context source (if any was injected
     // within the last ~30s) so the HUD can show provenance chips.
     const fresh = Date.now() - liveLastContextAt < 30000;
@@ -217,10 +271,12 @@ function startLive() {
   });
   live.on('closed', ({ code, reason }) => {
     console.warn('[live] closed', code, reason);
-    send('signal:status', 'live offline');
+    liveFailureCount++;
+    if (!paused && liveFailureCount >= 3) send('signal:status', 'live unavailable — screen demo still running');
     // simple reconnect after 3s if app still running
     if (!app.isReady()) return;
-    setTimeout(() => { if (live === null || live.closed) startLive(); }, 3000);
+    if (liveFailureCount >= 3) return;
+    setTimeout(() => { if (!paused && (live === null || live.closed)) startLive(); }, 3000);
   });
   live.connect();
 }
@@ -309,11 +365,14 @@ ipcMain.on('shadow:set-paused', (_e, next) => {
     }
     send('signal:status', 'paused — no LLM calls');
   } else {
+    if (!live || live.closed) {
+      startLive();
+    }
     if (memoryEnabled) {
       try { require('./suggest/engine').resume(); } catch {}
       try { require('./model/profile').start(); } catch {}
     }
-    send('signal:status', 'connected');
+    send('signal:status', live && live.ready ? 'live' : 'connected');
   }
 });
 
@@ -390,7 +449,12 @@ ipcMain.handle('shadow:recent-memory', (_e, n) => {
 const DASHBOARD_BASE = process.env.SHADOW_DASHBOARD_URL || 'http://localhost:5173';
 
 ipcMain.handle('shadow:open-dashboard', async (_e, qs) => {
-  const search = typeof qs === 'string' && qs.length ? (qs.startsWith('?') ? qs : '?' + qs) : '';
+  const target = typeof qs === 'string' ? qs : '';
+  if (target.startsWith('/')) {
+    await shell.openExternal(DASHBOARD_BASE + target);
+    return;
+  }
+  const search = target.length ? (target.startsWith('?') ? target : '?' + target) : '';
   await shell.openExternal(DASHBOARD_BASE + '/' + search);
 });
 
@@ -401,6 +465,11 @@ app.whenReady().then(async () => {
   }
   createWindow();
   createTray();
+  try {
+    globalShortcut.register('CommandOrControl+Shift+D', () => triggerNozomioDemo('hotkey'));
+  } catch (e) {
+    console.warn('[demo] hotkey registration failed', e && e.message);
+  }
 
   // Local memory module: route every saved row to the HUD writes feed.
   memory.onSaved((row) => {
@@ -454,9 +523,10 @@ app.whenReady().then(async () => {
   } catch (e) { console.warn('[dashboard-api] start failed', e && e.message); }
 
   win.webContents.once('did-finish-load', () => {
+    if (!win || win.isDestroyed()) return;
     if (process.platform === 'darwin') {
       const status = systemPreferences.getMediaAccessStatus('screen');
-      if (status !== 'granted') send('signal:status', 'grant Screen Recording in System Settings → Privacy');
+      if (status !== 'granted') send('signal:status', 'grant Screen Recording in System Settings > Privacy');
     }
     // Hydrate HUD with the most recent durable signals from prior sessions.
     try {
@@ -467,6 +537,7 @@ app.whenReady().then(async () => {
 });
 
 app.on('before-quit', () => {
+  try { globalShortcut.unregister('CommandOrControl+Shift+D'); } catch {}
   try { memory.stop(); } catch {}
   try { require('./proactive/scheduler').stop(); } catch {}
   if (live) { try { live.close(); } catch {} }

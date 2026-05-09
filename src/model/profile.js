@@ -23,7 +23,16 @@ async function refreshProfile() {
   try {
     const cats = await Promise.all(
       CATEGORIES.map(async (c) => {
-        const hits = await hs.query({ text: c.label, k: 20, halfLifeHours: 72 });
+        const ctx = require('../context');
+        const hits = await hs.search({
+          scope: 'partner',
+          partner: ctx.ME,
+          firm: ctx.FIRM,
+          query: c.label,
+          k: 20,
+          halfLifeHours: 72,
+          sources: ['vault'],
+        });
         const sum = hits.reduce((a, h) => a + (h.adjusted || 0), 0);
         const score = sigmoid(sum / NORMALIZER - 0.5);
         return { id: c.id, label: c.label, score };
