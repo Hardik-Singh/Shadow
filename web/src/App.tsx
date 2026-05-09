@@ -4,6 +4,7 @@ import MyShadowTab from './components/MyShadowTab';
 import FirmBrainTab from './components/firm/FirmBrainTab';
 import { PartnerChatProvider } from './components/PartnerChat';
 import { Artifact, View, deals, artifacts } from './mock/data';
+import { TooltipProvider } from '@/components/ui/tooltip';
 
 function readDeepLink(): { view: View; artifactId: string | null; dealId: string | null } {
   const p = new URLSearchParams(window.location.search);
@@ -119,22 +120,28 @@ export default function App() {
     setView(v);
     if (v === 'mine') setFocusedDealId(null);
     setOpenArtifactId(null);
+    const params = new URLSearchParams(window.location.search);
+    params.set('view', v);
+    if (v === 'mine') { params.delete('section'); params.delete('deal'); }
+    window.history.replaceState({}, '', `?${params.toString()}`);
   };
 
   return (
-    <PartnerChatProvider>
-      <Header view={view} onViewChange={onChangeView} onNew={handleNew} />
-      <main className={`page page-${view}`}>
-        {view === 'mine' ? (
-          <MyShadowTab
-            onOpenInFirm={onOpenInFirm}
-            initialArtifactId={openArtifactId}
-            pending={pending}
-          />
-        ) : (
-          <FirmBrainTab focusedDealId={focusedDealId} />
-        )}
-      </main>
-    </PartnerChatProvider>
+    <TooltipProvider delayDuration={150}>
+      <PartnerChatProvider>
+        <div className="min-h-screen bg-background">
+          <Header view={view} onViewChange={onChangeView} onNew={handleNew} />
+          {view === 'mine' ? (
+            <MyShadowTab
+              onOpenInFirm={onOpenInFirm}
+              initialArtifactId={openArtifactId}
+              pending={pending}
+            />
+          ) : (
+            <FirmBrainTab focusedDealId={focusedDealId} />
+          )}
+        </div>
+      </PartnerChatProvider>
+    </TooltipProvider>
   );
 }

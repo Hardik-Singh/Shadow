@@ -1,6 +1,10 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode } from 'react';
 import { Teammate, teammateById } from '../mock/data';
 import { Avatar } from './Avatars';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { ArrowUp } from 'lucide-react';
 
 type Ctx = {
   open: (teammateId: string) => void;
@@ -8,7 +12,6 @@ type Ctx = {
 };
 
 const PartnerChatCtx = createContext<Ctx>({ open: () => {}, close: () => {} });
-
 export const usePartnerChat = () => useContext(PartnerChatCtx);
 
 type Exchange = { q: string; a: string };
@@ -21,7 +24,7 @@ const FALLBACK = (t: Teammate, q: string): string => {
     return `Yes, ${t.name.split(' ')[0]} would probably pass — last 4 calls of this shape went the same way. They flag distribution risk first, not product.`;
   if (lower.includes('feedback') || lower.includes('think'))
     return `Honest read in ${t.name.split(' ')[0]}'s voice: "interesting but I'd want to see the design partner pipeline tightened before I lean in. Talk to them again in 6 weeks."`;
-  return `Based on ${t.name}'s judgment model: this matches their pattern about 60% of the time. They\'d ask "who is the customer and what are they actually paying for" before anything else.`;
+  return `Based on ${t.name}'s judgment model: this matches their pattern about 60% of the time. They'd ask "who is the customer and what are they actually paying for" before anything else.`;
 };
 
 export function PartnerChatProvider({ children }: { children: ReactNode }) {
@@ -30,13 +33,6 @@ export function PartnerChatProvider({ children }: { children: ReactNode }) {
   const [value, setValue] = useState('');
 
   const teammate = activeId ? teammateById(activeId) : null;
-
-  useEffect(() => {
-    if (!teammate || teammate.id === 'me') return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setActiveId(null); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [teammate]);
 
   const open = (id: string) => {
     if (id === 'me') return;
@@ -58,49 +54,59 @@ export function PartnerChatProvider({ children }: { children: ReactNode }) {
   return (
     <PartnerChatCtx.Provider value={{ open, close }}>
       {children}
-      {teammate && teammate.id !== 'me' && (
-        <>
-          <div className="drawer-scrim" onClick={close} />
-          <aside className="drawer drawer-chat" role="dialog" aria-label={`Chat with ${teammate.name}'s shadow`}>
-            <div className="drawer-head">
-              <div className="partner-chat-head">
-                <Avatar teammate={teammate} size="md" />
+      <Sheet open={!!teammate && teammate.id !== 'me'} onOpenChange={(o) => !o && close()}>
+        <SheetContent className="flex flex-col gap-4">
+          {teammate && (
+            <>
+              <div className="flex items-center gap-3">
+                <Avatar teammate={teammate} size="lg" interactive={false} />
                 <div>
-                  <h2 className="drawer-company">{teammate.name}'s shadow</h2>
-                  <div className="drawer-byline">{teammate.role} · ask anything in their voice</div>
+                  <div className="font-serif text-[20px] font-semibold tracking-tight">
+                    {teammate.name}'s shadow
+                  </div>
+                  <div className="text-[12px] text-muted-foreground">
+                    {teammate.role} · ask anything in their voice
+                  </div>
                 </div>
               </div>
-              <button className="drawer-close" onClick={close} aria-label="close">×</button>
-            </div>
 
-            <div className="partner-chat-thread">
-              {thread.length === 0 ? (
-                <div className="partner-chat-empty">
-                  Try: "what would you push back on here?" · "would you take this meeting?" · "honest feedback?"
-                </div>
-              ) : (
-                thread.map((x, i) => (
-                  <div className="exchange" key={i}>
-                    <div className="q"><span className="q-label">Q</span><span>{x.q}</span></div>
-                    <div className="a"><span className="a-label">{teammate.initials}</span><span>{x.a}</span></div>
+              <div className="flex flex-1 flex-col gap-3 overflow-y-auto pr-1">
+                {thread.length === 0 ? (
+                  <div className="rounded-lg border border-dashed border-border bg-secondary/30 p-3 text-[12.5px] italic text-muted-foreground">
+                    Try: "what would you push back on here?" · "would you take this meeting?" · "honest feedback?"
                   </div>
-                ))
-              )}
-            </div>
+                ) : (
+                  thread.map((x, i) => (
+                    <div key={i} className="border-b border-border pb-3 last:border-b-0">
+                      <div className="flex items-start gap-2 text-[13.5px]">
+                        <span className="mt-0.5 w-4 shrink-0 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Q</span>
+                        <span>{x.q}</span>
+                      </div>
+                      <div className="mt-1.5 flex items-start gap-2 text-[13px] leading-relaxed text-muted-foreground">
+                        <span className="mt-0.5 w-4 shrink-0 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-accent">{teammate.initials}</span>
+                        <span>{x.a}</span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
 
-            <form className="ask-prompt partner-chat-prompt" onSubmit={submit}>
-              <input
-                className="ask-input"
-                placeholder={`Ask ${teammate.name.split(' ')[0]}'s shadow…`}
-                value={value}
-                onChange={(e) => setValue(e.target.value)}
-                autoFocus
-              />
-              <button className="ask-submit" type="submit">Ask</button>
-            </form>
-          </aside>
-        </>
-      )}
+              <form onSubmit={submit} className="flex items-center gap-2 rounded-xl border border-border bg-card p-1.5 focus-within:ring-2 focus-within:ring-ring">
+                <Input
+                  className="border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                  placeholder={`Ask ${teammate.name.split(' ')[0]}'s shadow…`}
+                  value={value}
+                  onChange={(e) => setValue(e.target.value)}
+                  autoFocus
+                />
+                <Button type="submit" size="sm">
+                  Ask <ArrowUp className="h-3.5 w-3.5" />
+                </Button>
+              </form>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
     </PartnerChatCtx.Provider>
   );
 }
