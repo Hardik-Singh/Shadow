@@ -8,9 +8,10 @@ import ArtifactDetail from './ArtifactDetail';
 type Props = {
   onOpenInFirm?: (a: Artifact) => void;
   initialArtifactId?: string | null;
+  pending?: Artifact[];
 };
 
-export default function MyShadowTab({ onOpenInFirm, initialArtifactId }: Props) {
+export default function MyShadowTab({ onOpenInFirm, initialArtifactId, pending }: Props) {
   const [open, setOpen] = useState<Artifact | null>(null);
 
   useEffect(() => {
@@ -27,7 +28,7 @@ export default function MyShadowTab({ onOpenInFirm, initialArtifactId }: Props) 
           <ChatYourShadow />
         </div>
         <div className="mine-right">
-          <MyArtifacts onOpen={setOpen} />
+          <MyArtifacts onOpen={setOpen} pending={pending} />
         </div>
       </div>
 

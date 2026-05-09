@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import Header from './components/Header';
 import MyShadowTab from './components/MyShadowTab';
 import FirmBrainTab from './components/firm/FirmBrainTab';
+import { PartnerChatProvider } from './components/PartnerChat';
 import { Artifact, View, deals, artifacts } from './mock/data';
 
 function readDeepLink(): { view: View; artifactId: string | null; dealId: string | null } {
@@ -20,11 +21,50 @@ function readDeepLink(): { view: View; artifactId: string | null; dealId: string
   return { view: 'mine', artifactId: null, dealId: null };
 }
 
+const RESOLVED_BY_KIND: Record<string, Partial<Artifact>> = {
+  'IC memo': {
+    type: 'IC Memo', company: 'New IC Memo · draft',
+    verdict: 'investigate',
+    read: 'Draft generated. Open to review and edit before saving.',
+    body: 'Recommendation: investigate. Conviction: medium. Top question: who is the customer and what are they actually paying for?',
+    sources: ['notion'],
+  },
+  'Sourcing sheet': {
+    type: 'Sourcing Sheet', company: 'New sourcing sheet · draft',
+    verdict: 'investigate',
+    read: 'Sheet built from connected sources. Comps and team pulled.',
+    body: 'Team · market · comps · recent news — all auto-populated. Edit anything before saving.',
+    sources: ['notion', 'prior'],
+  },
+  'Founder background': {
+    type: 'Founder Background', company: 'New founder card · draft',
+    verdict: 'investigate',
+    read: 'Background pulled from public sources.',
+    body: 'GitHub · LinkedIn · prior companies · referenced exits.',
+    sources: ['prior'],
+  },
+  'Comp table': {
+    type: 'Comp Table', company: 'New comp table · draft',
+    verdict: 'investigate',
+    read: 'Public comps + firm prior deals.',
+    body: 'Datadog / Honeycomb / NewRelic at relevant stages, plus firm-internal comps.',
+    sources: ['prior'],
+  },
+  'Deal card': {
+    type: 'Deal Card', company: 'New deal card · draft',
+    verdict: 'investigate',
+    read: 'Watchlist entry created.',
+    body: 'Snapshot for the watchlist. You can promote to a sourcing sheet later.',
+    sources: [],
+  },
+};
+
 export default function App() {
   const initial = readDeepLink();
   const [view, setView] = useState<View>(initial.view);
   const [focusedDealId, setFocusedDealId] = useState<string | null>(initial.dealId);
   const [openArtifactId, setOpenArtifactId] = useState<string | null>(initial.artifactId);
+  const [pending, setPending] = useState<Artifact[]>([]);
 
   useEffect(() => {
     const onPop = () => {
@@ -38,7 +78,34 @@ export default function App() {
   }, []);
 
   const handleNew = (kind: string) => {
-    console.log(`[shadow] new artifact requested: ${kind}`);
+    const id = `gen-${Date.now()}`;
+    const stub: Artifact = {
+      id,
+      company: `Generating ${kind}…`,
+      type: kind,
+      mode: 'VC',
+      time: 'just now',
+      authorId: 'me',
+      reviewerIds: [],
+      verdict: 'investigate',
+      read: '',
+      body: '',
+      sources: [],
+      status: 'generating',
+    };
+    setPending((p) => [stub, ...p]);
+    setView('mine');
+
+    setTimeout(() => {
+      const resolved = RESOLVED_BY_KIND[kind] ?? RESOLVED_BY_KIND['IC memo'];
+      setPending((p) =>
+        p.map((a) =>
+          a.id === id
+            ? { ...a, ...resolved, status: 'final', time: 'just now' } as Artifact
+            : a,
+        ),
+      );
+    }, 1800);
   };
 
   const onOpenInFirm = (a: Artifact) => {
@@ -55,15 +122,19 @@ export default function App() {
   };
 
   return (
-    <>
+    <PartnerChatProvider>
       <Header view={view} onViewChange={onChangeView} onNew={handleNew} />
       <main className={`page page-${view}`}>
         {view === 'mine' ? (
-          <MyShadowTab onOpenInFirm={onOpenInFirm} initialArtifactId={openArtifactId} />
+          <MyShadowTab
+            onOpenInFirm={onOpenInFirm}
+            initialArtifactId={openArtifactId}
+            pending={pending}
+          />
         ) : (
           <FirmBrainTab focusedDealId={focusedDealId} />
         )}
       </main>
-    </>
+    </PartnerChatProvider>
   );
 }
