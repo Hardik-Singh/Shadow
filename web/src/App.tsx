@@ -5,6 +5,7 @@ import FirmBrainTab from './components/firm/FirmBrainTab';
 import { PartnerChatProvider } from './components/PartnerChat';
 import { Artifact, View, deals } from './mock/data';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { runDemoAction } from './lib/artifacts-api';
 
 function readDeepLink(): { view: View; artifactId: string | null; dealId: string | null } {
   const p = new URLSearchParams(window.location.search);
@@ -81,7 +82,7 @@ export default function App() {
     return () => window.removeEventListener('popstate', onPop);
   }, []);
 
-  const handleNew = (kind: string) => {
+  const handleNew = async (kind: string) => {
     const id = `gen-${Date.now()}`;
     const stub: Artifact = {
       id,
@@ -100,12 +101,28 @@ export default function App() {
     setPending((p) => [stub, ...p]);
     setView('mine');
 
+    const apiArtifact = await runDemoAction(kind);
+    if (apiArtifact) {
+      setPending((p) =>
+        p.map((a) => (a.id === id ? apiArtifact : a)),
+      );
+      return;
+    }
+
     setTimeout(() => {
       const resolved = RESOLVED_BY_KIND[kind] ?? RESOLVED_BY_KIND['IC memo'];
       setPending((p) =>
         p.map((a) =>
           a.id === id
-            ? { ...a, ...resolved, status: 'final', time: 'just now' } as Artifact
+            ? {
+                ...a,
+                ...resolved,
+                bodyKind: 'html',
+                body: `<p>${resolved.body ?? ''}</p>`,
+                flags: ['local demo fallback: Electron API was not reachable'],
+                status: 'final',
+                time: 'just now',
+              } as Artifact
             : a,
         ),
       );

@@ -14,6 +14,20 @@ export async function fetchArtifacts(): Promise<Artifact[]> {
   }
 }
 
+export async function runDemoAction(kind: string, company = 'Acme Inc'): Promise<Artifact | null> {
+  try {
+    const res = await fetch(`${BASE}/demo/actions`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ kind, company }),
+    });
+    if (!res.ok) throw new Error(`status ${res.status}`);
+    return (await res.json()) as Artifact;
+  } catch {
+    return null;
+  }
+}
+
 export type Unsub = () => void;
 
 export function subscribeArtifacts(onNew: (a: Artifact) => void): Unsub {

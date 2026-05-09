@@ -6,6 +6,7 @@ const http = require('http');
 const url = require('url');
 const Artifacts = require('../repos/artifacts');
 const { chat } = require('./chat');
+const { createDemoArtifact } = require('./demo-actions');
 const ctx = require('../context');
 let bus = null;
 try { bus = require('../bus'); } catch {}
@@ -61,6 +62,18 @@ async function handleRequest(req, res) {
     try {
       const out = await chat(body || {});
       return sendJson(res, 200, out);
+    } catch (err) {
+      return sendJson(res, 500, { error: err.message });
+    }
+  }
+
+  if (req.method === 'POST' && u.pathname === '/demo/actions') {
+    let body;
+    try { body = await readJsonBody(req); }
+    catch (err) { return sendJson(res, 400, { error: `bad body: ${err.message}` }); }
+    try {
+      const artifact = createDemoArtifact(body || {});
+      return sendJson(res, 201, artifact);
     } catch (err) {
       return sendJson(res, 500, { error: err.message });
     }
