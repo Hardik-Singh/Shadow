@@ -1,0 +1,87 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Shadow</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="hud">
+      <!-- HEADER -->
+      <header class="header drag">
+        <div class="brand">
+          <span class="logo">◈</span>
+          <span class="brand-name">Shadow</span>
+        </div>
+        <button class="mode-chip nodrag" id="mode" title="Click to switch mode">
+          <span id="mode-label">VC</span>
+        </button>
+        <div class="header-right">
+          <span class="session" id="session">0:00</span>
+          <span class="dot" id="dot"></span>
+          <button class="icon-btn nodrag mute" id="mute" title="Mute mic" aria-label="Mute microphone">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="3" width="6" height="12" rx="3"/>
+              <path d="M5 11a7 7 0 0 0 14 0"/>
+              <line x1="12" y1="18" x2="12" y2="22"/>
+            </svg>
+            <svg class="slash" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <line x1="3" y1="3" x2="21" y2="21"/>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="scroll">
+        <!-- WATCHING NOW -->
+        <section class="card">
+          <div class="card-head">
+            <span class="label">watching now</span>
+            <div class="meter nodrag" id="meter">
+              <span></span><span></span><span></span><span></span><span></span>
+              <span></span><span></span><span></span><span></span><span></span>
+            </div>
+          </div>
+          <div class="watching">
+            <div class="row"><span class="ico">👁</span><span id="seeing">team slide · Series A deck</span></div>
+            <div class="row"><span class="ico">🎙</span><span class="quote" id="hearing">"i don't trust this CAC number"</span></div>
+            <div class="row signal"><span class="signal-dot"></span><span id="signal">capturing signal</span></div>
+          </div>
+        </section>
+
+        <!-- MEMORY WRITES (live) -->
+        <section class="card">
+          <div class="card-head">
+            <span class="label">memory writes <span class="badge live">live</span></span>
+          </div>
+          <ul class="feed" id="writes"></ul>
+        </section>
+
+        <!-- SUGGESTIONS -->
+        <section class="card">
+          <div class="card-head"><span class="label">shadow thinks you want to</span></div>
+          <div class="pills" id="pills"></div>
+        </section>
+
+        <!-- ARTIFACTS -->
+        <section class="card">
+          <div class="card-head"><span class="label">artifacts this session</span></div>
+          <ul class="artifacts" id="artifacts">
+            <li class="empty">no artifacts yet — shadow will add them as you work</li>
+          </ul>
+        </section>
+      </div>
+
+      <!-- PROMPT BAR -->
+      <form class="prompt nodrag" id="prompt-form">
+        <input id="prompt" type="text" placeholder="ask shadow…" autocomplete="off" />
+        <button type="submit" aria-label="Send">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/>
+          </svg>
+        </button>
+      </form>
+    </div>
+    <script src="renderer.js"></script>
+  </body>
+</html>
