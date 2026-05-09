@@ -1,11 +1,24 @@
 const { app, BrowserWindow, Tray, Menu, screen, nativeImage, systemPreferences } = require('electron');
 const path = require('path');
 
+const config = require('./config');
+const ipc = require('./ipc');
+const screenCapture = require('./capture/screen');
+const profile = require('./model/profile');
+const suggest = require('./suggest/engine');
+const registry = require('./actions/registry');
+
+registry.register(require('./actions/ic-memo'));
+registry.register(require('./actions/sourcing-sheet'));
+registry.register(require('./actions/founder-lookup'));
+registry.register(require('./actions/market-check'));
+registry.register(require('./actions/flag-deal'));
+
 let win = null;
 let tray = null;
 
-const HUD_WIDTH = 300;
-const HUD_HEIGHT = 72;
+const HUD_WIDTH = 360;
+const HUD_HEIGHT = 520;
 const MARGIN = 16;
 
 function createWindow() {
@@ -39,41 +52,36 @@ function createWindow() {
 }
 
 function createTray() {
-  // Empty 16x16 template image — macOS shows a faint dot; replace with a real icon later.
   const icon = nativeImage.createEmpty();
   tray = new Tray(icon);
   tray.setToolTip('Shadow');
-
   const menu = Menu.buildFromTemplate([
-    {
-      label: 'Show HUD',
-      click: () => win && win.show(),
-    },
-    {
-      label: 'Hide HUD',
-      click: () => win && win.hide(),
-    },
+    { label: 'Show HUD', click: () => win && win.show() },
+    { label: 'Hide HUD', click: () => win && win.hide() },
     { type: 'separator' },
     { label: 'Quit Shadow', role: 'quit' },
   ]);
   tray.setContextMenu(menu);
-  tray.setTitle('●'); // visible label in menu bar since icon is empty
+  tray.setTitle('●');
 }
 
 app.whenReady().then(async () => {
-  if (process.platform === 'darwin' && app.dock) {
-    app.dock.hide();
-  }
+  if (process.platform === 'darwin' && app.dock) app.dock.hide();
   if (process.platform === 'darwin') {
-    try {
-      await systemPreferences.askForMediaAccess('microphone');
-    } catch (_) {}
+    try { await systemPreferences.askForMediaAccess('microphone'); } catch (_) {}
   }
+
   createWindow();
   createTray();
+  ipc.wire();
+  screenCapture.start();
+  profile.start();
+  suggest.start();
+
+  const hsMode = require('./ingest/hyperspell').isMock ? 'MOCK' : 'real';
+  console.log(`[shadow] online — hyperspell=${hsMode} nia=${config.nia.enabled} vision=${config.anthropic.enabled}`);
 });
 
-// Keep running when all windows are closed — this is an always-on overlay.
 app.on('window-all-closed', (e) => {
   e.preventDefault?.();
 });
