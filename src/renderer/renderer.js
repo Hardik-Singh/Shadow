@@ -111,10 +111,41 @@ muteBtn.addEventListener('click', () => {
   if (!muted && !micStarted) {
     micStarted = true;
     startMic();
+    startSpeechRecognition();
     return;
   }
   if (stream) stream.getAudioTracks().forEach((t) => (t.enabled = !muted));
 });
+
+// ===== SPEECH RECOGNITION → memory voice writes =====
+// Chromium's webkitSpeechRecognition is free and good enough for the demo.
+// Final transcripts go to main via window.shadow.voiceUtterance(), which the
+// memory layer turns into a `voice` Memory in Hyperspell (partner + firm vault).
+function startSpeechRecognition() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    console.warn('SpeechRecognition unavailable — voice memories disabled');
+    return;
+  }
+  const recog = new SR();
+  recog.continuous = true;
+  recog.interimResults = false;
+  recog.lang = 'en-US';
+  recog.onresult = (e) => {
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const r = e.results[i];
+      if (!r.isFinal) continue;
+      const text = (r[0].transcript || '').trim();
+      const confidence = r[0].confidence || 0;
+      if (text && window.shadow && window.shadow.voiceUtterance) {
+        window.shadow.voiceUtterance(text, confidence);
+      }
+    }
+  };
+  recog.onerror = (e) => console.warn('SR error', e.error);
+  recog.onend = () => { if (!muted) try { recog.start(); } catch {} };
+  try { recog.start(); } catch (err) { console.warn('SR start failed', err); }
+}
 
 // Reflect muted-by-default visual state on launch.
 hudEl.classList.add('muted');
@@ -187,7 +218,8 @@ modeBtn.addEventListener('click', () => {
 
 renderMode();
 
-// ===== MEMORY WRITES (driven by main process: distilled signals from SQLite) =====
+// ===== MEMORY WRITES (driven by main process: distilled signals from SQLite +
+// silent Hyperspell mirror for cross-session firm brain) =====
 function pushWrite(verb, text, opts) {
   const li = document.createElement('li');
   if (opts && opts.historical) li.classList.add('historical');
@@ -352,3 +384,55 @@ promptForm.addEventListener('submit', (e) => {
   promptInput.value = '';
   promptInput.placeholder = `watching for: ${v}`;
 });
+
+// ===== REAL SUGGESTIONS + ARTIFACTS (memory layer → HUD) =====
+// When the suggest engine emits real suggestions, override the static pills.
+// Clicks invoke the action handler, which reads from Hyperspell, calls the LLM,
+// and emits an `artifact` event that we render as a card.
+if (window.shadow && window.shadow.onSuggestions) {
+  window.shadow.onSuggestions((list) => {
+    if (!Array.isArray(list) || list.length === 0) return;
+    pillsEl.innerHTML = list
+      .map((s) => `<button data-id="${s.id}"><span>${s.label}</span><span class="arrow">→</span></button>`)
+      .join('');
+    pillsEl.querySelectorAll('button').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        btn.disabled = true;
+        const label = btn.querySelector('span').textContent;
+        btn.querySelector('span').textContent = 'working…';
+        pushWrite('action', `clicked "${label}"`);
+        try {
+          const r = await window.shadow.clickSuggestion(id);
+          if (r && r.error) {
+            btn.querySelector('span').textContent = 'failed: ' + r.error;
+          }
+        } catch (err) {
+          btn.querySelector('span').textContent = 'failed';
+          console.error(err);
+        } finally {
+          setTimeout(() => { btn.disabled = false; btn.querySelector('span').textContent = label; }, 1500);
+        }
+      });
+    });
+  });
+}
+
+if (window.shadow && window.shadow.onArtifact) {
+  window.shadow.onArtifact((a) => {
+    if (!a || !a.kind) return;
+    const co = (a.data && a.data.company) || 'untitled';
+    const labels = {
+      ic_memo: 'IC memo',
+      sourcing_sheet: 'Sourcing sheet',
+      founder_profile: 'Founder profile',
+      market_check: 'Market check',
+      flag: 'Flagged',
+    };
+    addArtifact({ icon: '⚡', name: `${co} · ${labels[a.kind] || a.kind}`, tag: 'NEW' });
+    const stats = a.data && a.data.sources;
+    if (stats && stats.hyperspell_total != null) {
+      pushWrite('synth', `${labels[a.kind] || a.kind}: drew ${stats.hyperspell_total} memories from hyperspell` + (stats.nia_total ? ` + ${stats.nia_total} from nia` : ''));
+    }
+  });
+}
