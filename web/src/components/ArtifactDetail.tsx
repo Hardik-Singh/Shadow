@@ -1,6 +1,10 @@
-import { useEffect } from 'react';
 import { Artifact, teammateById } from '../mock/data';
 import VerdictPill from './VerdictPill';
+import SourceChips from './SourceChips';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import { ArrowUpRight } from 'lucide-react';
 
 type Props = {
   artifact: Artifact | null;
@@ -9,71 +13,75 @@ type Props = {
 };
 
 export default function ArtifactDetail({ artifact, onClose, onOpenInFirm }: Props) {
-  useEffect(() => {
-    if (!artifact) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [artifact, onClose]);
-
-  if (!artifact) return null;
-  const author = teammateById(artifact.authorId);
+  const author = artifact ? teammateById(artifact.authorId) : null;
 
   return (
-    <>
-      <div className="drawer-scrim" onClick={onClose} />
-      <aside className="drawer" role="dialog" aria-label={`${artifact.company} ${artifact.type}`}>
-        <div className="drawer-head">
-          <div>
-            <div className="drawer-eyebrow">
-              <VerdictPill verdict={artifact.verdict} />
-              <span className="drawer-type">{artifact.type}</span>
-            </div>
-            <h2 className="drawer-company">{artifact.company}</h2>
-            <div className="drawer-byline">
-              {author?.name} · {artifact.time}
-            </div>
-          </div>
-          <button className="drawer-close" onClick={onClose} aria-label="close">×</button>
-        </div>
+    <Sheet open={!!artifact} onOpenChange={(open) => !open && onClose()}>
+      <SheetContent className="flex flex-col gap-5 overflow-y-auto">
+        {artifact && (
+          <>
+            <header>
+              <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                <VerdictPill verdict={artifact.verdict} />
+                <span className="font-medium text-accent">{artifact.type}</span>
+              </div>
+              <h2 className="mt-3 font-serif text-[26px] leading-tight tracking-tight">
+                {artifact.company}
+              </h2>
+              <div className="mt-1.5 text-[12.5px] text-muted-foreground">
+                {author?.name} · {artifact.time}
+              </div>
+            </header>
 
-        {artifact.read && <div className="drawer-read">{artifact.read}</div>}
+            {artifact.read && (
+              <p className="text-[14.5px] leading-relaxed text-foreground/90">{artifact.read}</p>
+            )}
 
-        {artifact.bodyKind === 'email' && artifact.email ? (
-          <EmailThread email={artifact.email} />
-        ) : artifact.bodyKind === 'slack' && artifact.slack ? (
-          <SlackThread slack={artifact.slack} />
-        ) : (
-          <div className="drawer-body">{artifact.body}</div>
+            {artifact.bodyKind === 'email' && artifact.email ? (
+              <EmailThread email={artifact.email} />
+            ) : artifact.bodyKind === 'slack' && artifact.slack ? (
+              <SlackThread slack={artifact.slack} />
+            ) : (
+              <p className="whitespace-pre-wrap text-[13.5px] leading-relaxed text-muted-foreground">
+                {artifact.body}
+              </p>
+            )}
+
+            <SourceChips sources={artifact.sources} />
+
+            <Separator />
+
+            <div className="mt-auto flex items-center gap-2">
+              <Button variant="outline" size="sm">Edit</Button>
+              <Button variant="outline" size="sm">Regenerate</Button>
+              {onOpenInFirm && (
+                <Button size="sm" className="ml-auto" onClick={() => onOpenInFirm(artifact)}>
+                  Open in Firm Brain <ArrowUpRight className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
+          </>
         )}
-
-        <div className="drawer-actions">
-          <button className="btn-ghost">Edit</button>
-          <button className="btn-ghost">Regenerate</button>
-          {onOpenInFirm && (
-            <button className="btn-primary" onClick={() => onOpenInFirm(artifact)}>
-              Open in Firm Brain →
-            </button>
-          )}
-        </div>
-      </aside>
-    </>
+      </SheetContent>
+    </Sheet>
   );
 }
 
 function EmailThread({ email }: { email: NonNullable<Artifact['email']> }) {
   return (
-    <div className="email-thread">
-      <div className="email-subject">{email.subject}</div>
-      <div className="email-list">
+    <div className="rounded-xl border border-border bg-secondary/40 p-4">
+      <div className="text-[13.5px] font-semibold">{email.subject}</div>
+      <div className="mt-3 flex flex-col gap-3">
         {email.messages.map((m, i) => (
-          <div className="email-msg" key={i}>
-            <div className="email-msg-head">
-              <span className="email-from">{m.from}</span>
-              <span className="email-time">{m.time}</span>
+          <div key={i} className="rounded-lg border border-border bg-card p-3">
+            <div className="flex items-center justify-between text-[12px]">
+              <span className="font-semibold">{m.from}</span>
+              <span className="text-muted-foreground/70">{m.time}</span>
             </div>
-            {m.to && <div className="email-to">to: {m.to}</div>}
-            <div className="email-body">{m.body}</div>
+            {m.to && <div className="mt-0.5 text-[11.5px] text-muted-foreground">to: {m.to}</div>}
+            <div className="mt-2 whitespace-pre-wrap text-[13px] leading-relaxed text-muted-foreground">
+              {m.body}
+            </div>
           </div>
         ))}
       </div>
@@ -83,28 +91,30 @@ function EmailThread({ email }: { email: NonNullable<Artifact['email']> }) {
 
 function SlackThread({ slack }: { slack: NonNullable<Artifact['slack']> }) {
   return (
-    <div className="slack-thread">
-      <div className="slack-channel">{slack.channel}</div>
-      <div className="slack-list">
+    <div className="rounded-xl border border-border bg-secondary/40 p-4">
+      <div className="font-mono text-[12px] text-accent">{slack.channel}</div>
+      <div className="mt-3 flex flex-col gap-3">
         {slack.messages.map((m, i) => (
-          <div className="slack-msg" key={i}>
+          <div key={i} className="flex gap-2.5">
             <div
-              className="slack-avatar"
-              style={{
-                background: `linear-gradient(135deg, hsl(${m.hue} 70% 60%), hsl(${(m.hue + 40) % 360} 60% 40%))`,
-              }}
+              className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-[10.5px] font-semibold text-white/95"
+              style={{ background: `linear-gradient(135deg, hsl(${m.hue} 55% 52%), hsl(${(m.hue + 40) % 360} 50% 38%))` }}
             >
               {m.initials}
             </div>
-            <div className="slack-body">
-              <div className="slack-head">
-                <span className="slack-who">{m.who}</span>
-                <span className="slack-time">{m.time}</span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-baseline gap-2">
+                <span className="text-[13px] font-semibold">{m.who}</span>
+                <span className="text-[11px] text-muted-foreground/70">{m.time}</span>
               </div>
-              <div className="slack-text">{m.text}</div>
+              <div className="mt-0.5 text-[13px] leading-relaxed text-muted-foreground">{m.text}</div>
               {m.reactions && m.reactions.length > 0 && (
-                <div className="slack-reactions">
-                  {m.reactions.map((r, j) => <span className="slack-reaction" key={j}>{r}</span>)}
+                <div className="mt-1.5 flex gap-1">
+                  {m.reactions.map((r, j) => (
+                    <span key={j} className="rounded-full border border-border bg-card px-2 py-0.5 text-[11px]">
+                      {r}
+                    </span>
+                  ))}
                 </div>
               )}
             </div>
