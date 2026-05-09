@@ -3,7 +3,7 @@ import Header from './components/Header';
 import MyShadowTab from './components/MyShadowTab';
 import FirmBrainTab from './components/firm/FirmBrainTab';
 import { PartnerChatProvider } from './components/PartnerChat';
-import { Artifact, View, deals, artifacts } from './mock/data';
+import { Artifact, View, deals } from './mock/data';
 import { TooltipProvider } from '@/components/ui/tooltip';
 
 function readDeepLink(): { view: View; artifactId: string | null; dealId: string | null } {
@@ -13,7 +13,10 @@ function readDeepLink(): { view: View; artifactId: string | null; dealId: string
   if (dealId && deals.find((d) => d.id === dealId)) {
     return { view: 'firm', artifactId: null, dealId };
   }
-  if (artifactId && artifacts.find((a) => a.id === artifactId)) {
+  if (artifactId) {
+    // Accept any artifact id — real artifacts (art_…) resolve from the
+    // useArtifacts() stream once they arrive over SSE; mock ids match the
+    // seed data on first render.
     return { view: 'mine', artifactId, dealId: null };
   }
   if (p.get('view') === 'firm') {

@@ -1,5 +1,5 @@
 import { SourceKind, sourceLabel } from '../mock/data';
-import { Hash, AtSign, FileText, Calendar, History } from 'lucide-react';
+import { Hash, AtSign, FileText, Calendar, History, Globe } from 'lucide-react';
 
 const ICON: Record<SourceKind, React.ReactNode> = {
   slack: <Hash className="h-3 w-3" />,
@@ -7,6 +7,7 @@ const ICON: Record<SourceKind, React.ReactNode> = {
   notion: <FileText className="h-3 w-3" />,
   calendar: <Calendar className="h-3 w-3" />,
   prior: <History className="h-3 w-3" />,
+  nia: <Globe className="h-3 w-3" />,
 };
 
 export default function SourceChips({ sources }: { sources: SourceKind[] }) {

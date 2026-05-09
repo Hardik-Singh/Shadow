@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Artifact, artifacts, Deal, teammateById } from '../../mock/data';
+import { Artifact, Deal, teammateById } from '../../mock/data';
+import { useArtifacts } from '../../lib/use-artifacts';
 import { Avatar } from '../Avatars';
 import VerdictPill from '../VerdictPill';
 import SourceChips from '../SourceChips';
@@ -10,6 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 export default function DealDetail({ deal }: { deal: Deal }) {
   const [open, setOpen] = useState<Artifact | null>(null);
+  const artifacts = useArtifacts();
 
   const artifact = deal.yourArtifactId
     ? artifacts.find((a) => a.id === deal.yourArtifactId)

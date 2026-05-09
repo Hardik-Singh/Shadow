@@ -18,4 +18,12 @@ async function run({ company } = {}) {
   return { kind: 'flag', data };
 }
 
-module.exports = { id: 'flag_deal', label: 'flag {company}', run };
+module.exports = {
+  id: 'flag_deal',
+  label: 'flag {company}',
+  triggers: ['concern', 'pass', 'reject', 'red flag', 'risk', 'churn', 'lawsuit', 'declining'],
+  docTypes: ['pitch_deck', 'doc', 'email', 'chat'],
+  intents: ['decide', 'communicate'],
+  entityTypes: ['company'],
+  run,
+};

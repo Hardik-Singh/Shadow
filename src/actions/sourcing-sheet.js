@@ -1,12 +1,19 @@
 const hs = require('../ingest/hyperspell');
 const nia = require('../ingest/nia');
 const ctx = require('../context');
-const { llmJson, summarizeHits, hsContextStats, writeBack } = require('./_synth');
+const {
+  llmArtifact,
+  summarizeHits,
+  hsContextStats,
+  mergeCitations,
+  buildArtifact,
+  writeBack,
+} = require('./_synth');
 
-const SYSTEM = `You produce sourcing sheets in the partner's voice. JSON only.
-Schema: { "company": str, "founded": str, "location": str, "team_size": str,
-  "ask": str, "product": str, "team": str, "market": str,
-  "competitors": [str], "recent_news": [str], "what_to_dig_on": [str] }`;
+const SYSTEM = `You produce sourcing sheets in the partner's voice.
+- Pull facts from CITATIONS (Nia world data) and quote partner voice from BEHAVIORAL CONTEXT (Hyperspell).
+- Cite every external claim inline as <sup><a href="#cite-N">N</a></sup>.
+- Body sections: <h2>Snapshot</h2> (founded · location · team · ask), <h2>Product</h2>, <h2>Team</h2>, <h2>Market & Competitors</h2>, <h2>Recent Signals</h2>, <h2>What to dig on</h2><ul>…</ul>.`;
 
 async function run({ company } = {}) {
   const co = company || 'this company';
@@ -17,29 +24,39 @@ async function run({ company } = {}) {
     hs.search({ scope: 'firm', partner, firm, query: `${co} sector firm context`, sources: ['vault'], k: 6, halfLifeHours: 8760 }),
   ]);
   const [companies, news, people] = await Promise.all([
-    nia.web ? nia.web(co, 'company') : Promise.resolve([]),
-    nia.web ? nia.web(co, 'news') : Promise.resolve([]),
-    nia.web ? nia.web(`${co} founders team`, 'github') : Promise.resolve([]),
+    nia.web(co, 'company'),
+    nia.web(co, 'news'),
+    nia.web(`${co} founders team`, 'github'),
   ]);
   const stats = hsContextStats([thesis, deck, firmCtx]);
+  const citations = mergeCitations(companies, news, people);
   const niaTotal = (companies || []).length + (news || []).length + (people || []).length;
+
   const prompt = [
     `COMPANY: ${co}`,
     `HYPERSPELL CONTEXT — ${stats.total} memories (${stats.by_scope.partner} personal · ${stats.by_scope.firm} firm)`,
     `dig-areas (${thesis.length}):`, summarizeHits(thesis),
     `deck (${deck.length}):`, summarizeHits(deck),
     `firm context (${firmCtx.length}):`, summarizeHits(firmCtx),
-    `world — company (${(companies || []).length}):`, summarizeHits(companies),
-    `world — news (${(news || []).length}):`, summarizeHits(news),
-    `world — team (${(people || []).length}):`, summarizeHits(people),
-    'Output JSON.',
+    `world hits — company ${(companies || []).length} · news ${(news || []).length} · people ${(people || []).length}`,
+    'Write the sourcing sheet now.',
   ].join('\n');
-  let sheet;
-  try { sheet = await llmJson({ system: SYSTEM, user: prompt }); }
-  catch (err) { sheet = { _error: err.message }; }
-  const data = { company: co, sheet, sources: { hyperspell_total: stats.total, nia_total: niaTotal }, flags: niaTotal === 0 ? ['limited external data'] : [] };
-  if (!sheet._error && !sheet._stub) writeBack({ kind: 'sourcing_sheet', company: co, text: JSON.stringify(sheet, null, 2) });
-  return { kind: 'sourcing_sheet', data };
+
+  let llmOut;
+  try { llmOut = await llmArtifact({ system: SYSTEM, user: prompt, citations }); }
+  catch (err) { llmOut = { _error: err.message }; }
+
+  const artifact = buildArtifact({ kind: 'sourcing_sheet', company: co, llmOut, citations, stats, niaTotal });
+  if (llmOut && !llmOut._error && !llmOut._stub) writeBack({ kind: 'sourcing_sheet', company: co, text: llmOut.body_html || llmOut.read || '' });
+  return { kind: 'sourcing_sheet', data: { company: co, artifactId: artifact.id, sources: { hyperspell_total: stats.total, nia_total: niaTotal }, flags: artifact.flags } };
 }
 
-module.exports = { id: 'sourcing_sheet', label: 'generate sourcing sheet for {company}', run };
+module.exports = {
+  id: 'sourcing_sheet',
+  label: 'generate sourcing sheet for {company}',
+  triggers: ['sourcing', 'pipeline', 'spreadsheet', 'crm', 'airtable', 'batch', 'directory', 'list of companies'],
+  docTypes: ['spreadsheet', 'browser'],
+  intents: ['source', 'browse'],
+  entityTypes: ['company', 'none'],
+  run,
+};
