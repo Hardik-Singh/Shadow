@@ -5,16 +5,36 @@
 const http = require('http');
 const url = require('url');
 const Artifacts = require('../repos/artifacts');
+const { chat } = require('./chat');
+const ctx = require('../context');
 let bus = null;
 try { bus = require('../bus'); } catch {}
 
 const DEFAULT_PORT = 4310;
 const ALLOWED_ORIGIN = process.env.SHADOW_DASHBOARD_URL || 'http://localhost:5173';
+const MAX_BODY_BYTES = 32 * 1024;
 
 function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+}
+
+function readJsonBody(req) {
+  return new Promise((resolve, reject) => {
+    let size = 0;
+    const chunks = [];
+    req.on('data', (c) => {
+      size += c.length;
+      if (size > MAX_BODY_BYTES) { reject(new Error('body too large')); req.destroy(); return; }
+      chunks.push(c);
+    });
+    req.on('end', () => {
+      try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}')); }
+      catch (err) { reject(err); }
+    });
+    req.on('error', reject);
+  });
 }
 
 function sendJson(res, status, body) {
@@ -23,9 +43,28 @@ function sendJson(res, status, body) {
   res.end(JSON.stringify(body));
 }
 
-function handleRequest(req, res) {
+async function handleRequest(req, res) {
   const u = url.parse(req.url, true);
   if (req.method === 'OPTIONS') { setCors(res); res.writeHead(204); res.end(); return; }
+
+  if (req.method === 'GET' && u.pathname === '/partners') {
+    const partners = ctx.ALL_PARTNERS.map((p) => ({
+      id: p.id, name: p.name, role: p.role, initials: p.initials, is_me: !!p.is_me,
+    }));
+    return sendJson(res, 200, partners);
+  }
+
+  if (req.method === 'POST' && u.pathname === '/chat') {
+    let body;
+    try { body = await readJsonBody(req); }
+    catch (err) { return sendJson(res, 400, { error: `bad body: ${err.message}` }); }
+    try {
+      const out = await chat(body || {});
+      return sendJson(res, 200, out);
+    } catch (err) {
+      return sendJson(res, 500, { error: err.message });
+    }
+  }
 
   if (req.method === 'GET' && u.pathname === '/artifacts') {
     return sendJson(res, 200, Artifacts.list({ limit: Number(u.query.limit) || 100 }));
