@@ -187,65 +187,33 @@ modeBtn.addEventListener('click', () => {
 
 renderMode();
 
-// ===== MEMORY WRITES (live feed) =====
-const WRITES_POOL = [
-  ['saving', 'skeptical of short cofounder relationships'],
-  ['saving', 'prefers technical founders with prior exits'],
-  ['updating', 'TAM sensitivity weight +12%'],
-  ['saving', 'B2B infra > consumer for early-stage'],
-  ['flagging', '"feels expensive" said 3x today'],
-  ['saving', 'dwell time on team slide > 30s = positive'],
-  ['updating', 'consumer-play weight -5%'],
-  ['saving', 'distrusts unverified TAM claims'],
-  ['linking', 'this CTO ↔ Stripe alumnus pattern'],
-  ['saving', 'asks about CAC before TAM (priority order)'],
-];
-function pushWrite(verb, text) {
+// ===== MEMORY WRITES (driven by main process: distilled signals from SQLite) =====
+function pushWrite(verb, text, opts) {
   const li = document.createElement('li');
+  if (opts && opts.historical) li.classList.add('historical');
   li.innerHTML = `<span class="verb">${verb}:</span>${text}`;
   writesEl.prepend(li);
   while (writesEl.children.length > 12) writesEl.lastChild.remove();
 }
-let writeIdx = 0;
-setInterval(() => {
-  const [verb, text] = WRITES_POOL[writeIdx % WRITES_POOL.length];
-  pushWrite(verb, text);
-  writeIdx++;
-}, 7000);
-// seed a couple immediately
-pushWrite('saving', 'session started — VC mode');
-setTimeout(() => pushWrite('saving', 'observing pitch deck: Acme Inc'), 800);
+pushWrite('saving', 'session started');
 
-// ===== LIVE THOUGHTS (stream-of-consciousness) =====
-const THOUGHTS_POOL = [
-  'this CTO profile is the kind they usually like — ex-Stripe pattern',
-  'TAM number feels round. round = made up.',
-  'they spent 32s on the team slide. that\'s positive.',
-  'cofounders met 8 months ago — partner always flags this',
-  'CAC table is missing payback period. they\'ll ask.',
-  'B2B infra · their highest-conviction sector this quarter',
-  'no mention of competitors in the deck — suspicious or confident?',
-  'partner muttered "feels expensive" — third time today',
-  'reviewing the founder\'s github · 340 commits last 90 days',
-  'cross-referencing this team to Series A precedents',
-  'this looks adjacent to a deal they passed on in March',
-  'consumer-play weight is low · this one is B2B · alignment good',
-  'no churn metrics. they always ask about churn.',
-  'thesis match: technical founder + B2B infra + early-stage = strong',
-];
+if (window.shadow && window.shadow.onWrite) {
+  window.shadow.onWrite((row) => {
+    if (!row || !row.text) return;
+    pushWrite(row.verb || 'saving', row.text, { historical: !!row.historical });
+  });
+}
+
+// ===== LIVE THOUGHTS (driven by Gemini Live model responses) =====
 function pushThought(text) {
   const li = document.createElement('li');
   li.textContent = text;
   thoughtsEl.prepend(li);
   while (thoughtsEl.children.length > 5) thoughtsEl.lastChild.remove();
 }
-let thoughtIdx = 0;
-setInterval(() => {
-  pushThought(THOUGHTS_POOL[thoughtIdx % THOUGHTS_POOL.length]);
-  thoughtIdx++;
-}, 5200);
-pushThought(THOUGHTS_POOL[0]);
-thoughtIdx = 1;
+if (window.shadow && window.shadow.onThought) {
+  window.shadow.onThought((t) => { if (t) pushThought(t); });
+}
 
 // ===== WATCHING (real signals only — rows hidden until first real text) =====
 if (window.shadow) {
@@ -371,13 +339,16 @@ function onSuggestion(text) {
   openDashboard(route);
 }
 
-// ===== PROMPT — sets the focus the live feed should weight toward =====
+// ===== PROMPT — one input, two effects:
+//   1. setFocus: reweights the per-frame screen captioner toward this topic
+//   2. ask: injects a one-shot user turn into the live Gemini session for an answer
 promptForm.addEventListener('submit', (e) => {
   e.preventDefault();
   const v = promptInput.value.trim();
   if (!v) return;
   pushWrite('focus', v);
   if (window.shadow && window.shadow.setFocus) window.shadow.setFocus(v);
+  if (window.shadow && window.shadow.ask) window.shadow.ask(v);
   promptInput.value = '';
   promptInput.placeholder = `watching for: ${v}`;
 });

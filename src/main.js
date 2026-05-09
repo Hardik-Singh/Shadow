@@ -1,6 +1,8 @@
 const { app, BrowserWindow, Tray, Menu, screen, nativeImage, systemPreferences, ipcMain, desktopCapturer, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { LiveSession } = require('./live/session');
+const memory = require('./memory');
 
 (function loadEnv() {
   try {
@@ -23,14 +25,14 @@ let win = null;
 let tray = null;
 let inFlight = false;
 let userFocus = '';
+let live = null;
+let liveLastFrameAt = 0;
+const LIVE_FRAME_INTERVAL_MS = 5000;
 
 const HUD_WIDTH = 380;
 const HUD_HEIGHT = 680;
 const MARGIN = 16;
 
-// Per-frame REST against gemini-flash-latest. No Live session — Live's audio-out
-// path adds a 3-5s synthesis penalty per turn. Direct generateContent calls return
-// in ~500ms-1s, which is what we need for "watching now" to feel live.
 const VISION_MODEL = 'gemini-flash-latest';
 const BASE_PROMPT = [
   "You are watching a venture capital partner's screen. Describe WHAT THEY ARE READING / DOING — not the application.",
@@ -43,15 +45,9 @@ const BASE_PROMPT = [
   '  YC W24 batch directory · scrolling, currently on "Acme Inc" card · B2B infra · $8M ask',
   '  IC Memo draft for Acme Inc · "Recommendation" section · cursor on empty paragraph',
   '  Acme Inc pitch deck · slide 4 "Team" · reading CTO James Chen bio (ex-Stripe, 4y eng lead)',
-  '  Gmail thread "Series A intro — Stripe" · 3 unread replies · last from Patrick Collison',
-  '  Crunchbase profile for Acme Inc · funding tab · seed round $2M led by Initialized',
-  '  Twitter thread by @paulg on founder selection · halfway down · 47 replies visible',
-  '  Notion sourcing sheet "Q2 deals" · row for "Acme Inc" expanded · TAM cell highlighted',
   '',
   'BAD outputs — never produce these:',
   '  "Chrome"   "browser"   "a website"   "PDF document"   "VS Code"   "an editor"',
-  '',
-  'If the screen is mostly empty / loading / a homepage with nothing notable, say what you actually see ("Chrome new tab — empty", "blank Notion page titled ..."). Never just name the app.',
   '',
   'No prose. No preamble. No quotes around the line. No emojis. ONE line only.',
 ].join('\n');
@@ -60,7 +56,7 @@ function buildPrompt() {
   if (!userFocus) return BASE_PROMPT;
   return BASE_PROMPT
     + `\n\nThe user is specifically watching for: "${userFocus}"`
-    + '\nWeight your description toward that — if you see anything related, call it out by name. If nothing related is visible, describe the screen normally but stay alert for it.';
+    + '\nWeight your description toward that — if you see anything related, call it out by name.';
 }
 
 function send(ch, payload) {
@@ -100,11 +96,40 @@ async function captionFrame(b64Jpeg) {
     if (text) {
       send('signal:seeing', text);
       send('signal:status', 'connected');
+      memory.noteScreen(text);
     }
   } catch (e) {
     console.error('[vision] fetch', e && e.message);
     send('signal:status', 'offline');
   }
+}
+
+function startLive() {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) return;
+  if (live) { try { live.close(); } catch {} }
+  live = new LiveSession(key);
+  live.on('ready', () => {
+    send('signal:status', 'live');
+  });
+  live.on('transcript', (text) => {
+    send('signal:hearing', text);
+    memory.noteTranscript(text);
+  });
+  live.on('model_response', (text) => {
+    send('signal:thought', text);
+  });
+  live.on('error', (e) => {
+    console.error('[live] error', e && e.message);
+  });
+  live.on('closed', ({ code, reason }) => {
+    console.warn('[live] closed', code, reason);
+    send('signal:status', 'live offline');
+    // simple reconnect after 3s if app still running
+    if (!app.isReady()) return;
+    setTimeout(() => { if (live === null || live.closed) startLive(); }, 3000);
+  });
+  live.connect();
 }
 
 function createWindow() {
@@ -160,19 +185,38 @@ ipcMain.handle('shadow:get-sources', async () => {
 
 ipcMain.on('shadow:frame', async (_e, b64Jpeg) => {
   if (!b64Jpeg) return;
-  // Drop frames if a request is still in flight — keeps cadence honest.
+
+  // Throttled frame to live session for in-context vision.
+  const now = Date.now();
+  if (live && live.ready && now - liveLastFrameAt >= LIVE_FRAME_INTERVAL_MS) {
+    liveLastFrameAt = now;
+    live.sendFrame(b64Jpeg);
+  }
+
+  // Caption frame for the HUD "seeing" row + memory buffer.
   if (inFlight) return;
   inFlight = true;
   try { await captionFrame(b64Jpeg); }
   finally { inFlight = false; }
 });
 
-// Mic path is intentionally a no-op for now. The renderer doesn't open the
-// mic until the user unmutes; nothing is sent to this channel until then.
-ipcMain.on('shadow:audio', () => {});
+ipcMain.on('shadow:audio', (_e, b64Pcm) => {
+  if (!b64Pcm || !live || !live.ready) return;
+  live.sendAudio(b64Pcm);
+});
 
 ipcMain.on('shadow:set-focus', (_e, text) => {
   userFocus = (text || '').toString().slice(0, 500);
+});
+
+ipcMain.on('shadow:ask', (_e, text) => {
+  if (!text) return;
+  if (live && live.ready) live.injectPrompt(text);
+});
+
+ipcMain.handle('shadow:recent-memory', (_e, n) => {
+  try { return memory.recent(typeof n === 'number' ? n : 20); }
+  catch (e) { console.error('[memory] recent', e && e.message); return []; }
 });
 
 const DASHBOARD_BASE = process.env.SHADOW_DASHBOARD_URL || 'http://localhost:5173';
@@ -190,12 +234,30 @@ app.whenReady().then(async () => {
   createWindow();
   createTray();
 
+  // Memory: route every saved row to the HUD writes feed.
+  memory.onSaved((row) => {
+    send('signal:write', { verb: row.verb, text: row.text, ts: row.ts });
+  });
+  try { memory.start(); } catch (e) { console.error('[memory] start', e && e.message); }
+
+  startLive();
+
   win.webContents.once('did-finish-load', () => {
     if (process.platform === 'darwin') {
       const status = systemPreferences.getMediaAccessStatus('screen');
       if (status !== 'granted') send('signal:status', 'grant Screen Recording in System Settings → Privacy');
     }
+    // Hydrate HUD with the most recent durable signals from prior sessions.
+    try {
+      const recent = memory.recent(8).reverse();
+      for (const r of recent) send('signal:write', { verb: r.verb, text: r.text, ts: r.ts, historical: true });
+    } catch {}
   });
+});
+
+app.on('before-quit', () => {
+  try { memory.stop(); } catch {}
+  if (live) { try { live.close(); } catch {} }
 });
 
 app.on('window-all-closed', (e) => { e.preventDefault?.(); });
