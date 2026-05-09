@@ -1,4 +1,5 @@
 const Artifacts = require('../repos/artifacts');
+const { buildRelations } = require('../repos/artifact-relations');
 
 const KIND_TO_TYPE = {
   'IC memo': 'IC Memo',
@@ -43,6 +44,7 @@ function baseArtifact({ kind, company, verdict, read, body }) {
     bodyKind: 'html',
     sources: ['prior'],
     flags: ['demo-mode scaffold: replace with live Hyperspell/Nia action output before production'],
+    relations: buildRelations({ company, kind, authorId: 'me' }),
     raw: {
       demo: true,
       hyperspell_total: 24,

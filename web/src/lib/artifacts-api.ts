@@ -1,4 +1,4 @@
-import type { Artifact } from '../mock/data';
+import type { Artifact, ArtifactRelation } from '../mock/data';
 
 const BASE =
   ((import.meta as unknown as { env?: Record<string, string> }).env?.VITE_SHADOW_API) ||
@@ -25,6 +25,20 @@ export async function runDemoAction(kind: string, company = 'Acme Inc'): Promise
     return (await res.json()) as Artifact;
   } catch {
     return null;
+  }
+}
+
+export async function fetchRelations(params: { company?: string; type?: string; artifact?: string } = {}): Promise<Array<ArtifactRelation & { artifactId: string }>> {
+  const qs = new URLSearchParams();
+  if (params.company) qs.set('company', params.company);
+  if (params.type) qs.set('type', params.type);
+  if (params.artifact) qs.set('artifact', params.artifact);
+  try {
+    const res = await fetch(`${BASE}/relations?${qs.toString()}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`status ${res.status}`);
+    return (await res.json()) as Array<ArtifactRelation & { artifactId: string }>;
+  } catch {
+    return [];
   }
 }
 

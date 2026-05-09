@@ -6,6 +6,7 @@
 // with whatever this store returns, so we don't duplicate the seeds here.
 
 const crypto = require('crypto');
+const { dedupeRelations } = require('./artifact-relations');
 let bus = null;
 try { bus = require('../bus'); } catch {}
 
@@ -19,11 +20,23 @@ function genId() {
 }
 
 function add(input) {
-  const a = { id: input.id || genId(), ...input };
+  const a = { id: input.id || genId(), ...input, relations: dedupeRelations(input.relations || []) };
   items.unshift(a);
   while (items.length > CAP) items.pop();
   if (bus) bus.emit('artifacts:new', a);
   return a;
+}
+
+function relations({ company, type, id } = {}) {
+  const rows = items.filter((a) => {
+    if (id && a.id !== id) return false;
+    if (company && String(a.company || '').toLowerCase() !== String(company).toLowerCase()) return false;
+    return true;
+  });
+  const rels = rows.flatMap((a) =>
+    (a.relations || []).map((r) => ({ ...r, artifactId: a.id, artifactType: a.type, company: a.company })),
+  );
+  return type ? rels.filter((r) => r.type === type) : rels;
 }
 
 function list({ limit = 100 } = {}) {
@@ -34,4 +47,4 @@ function get(id) {
   return items.find((a) => a.id === id) || null;
 }
 
-module.exports = { add, list, get };
+module.exports = { add, list, get, relations };
