@@ -4,8 +4,8 @@ const path = require('path');
 let win = null;
 let tray = null;
 
-const HUD_WIDTH = 300;
-const HUD_HEIGHT = 72;
+const HUD_WIDTH = 380;
+const HUD_HEIGHT = 680;
 const MARGIN = 16;
 
 function createWindow() {
@@ -20,7 +20,9 @@ function createWindow() {
     y,
     frame: false,
     transparent: true,
-    resizable: false,
+    resizable: true,
+    minWidth: 320,
+    minHeight: 360,
     movable: true,
     hasShadow: false,
     skipTaskbar: true,

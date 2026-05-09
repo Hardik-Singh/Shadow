@@ -5,7 +5,9 @@
   "description": "Always-on agent overlay HUD",
   "main": "src/main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "web:install": "cd web && npm install",
+    "web": "cd web && npm run dev"
   },
   "devDependencies": {
     "electron": "^32.0.0"
