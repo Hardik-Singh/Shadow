@@ -1,6 +1,8 @@
 import { companies, Company, deals, personById } from '../../mock/data';
 import VerdictPill from '../VerdictPill';
 import { cn } from '@/lib/utils';
+import { useArtifacts } from '@/lib/use-artifacts';
+import { relationCountsForCompany } from '@/lib/relations';
 
 const STAGE_LABEL: Record<Company['stage'], string> = {
   sourcing: 'Sourcing',
@@ -21,6 +23,8 @@ const STAGE_TONE: Record<Company['stage'], string> = {
 };
 
 export default function Companies({ onOpenDeal }: { onOpenDeal: (id: string) => void }) {
+  const artifacts = useArtifacts();
+
   return (
     <section>
       <header className="mb-5">
@@ -31,22 +35,24 @@ export default function Companies({ onOpenDeal }: { onOpenDeal: (id: string) => 
       </header>
 
       <div className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
-        <div className="grid grid-cols-[minmax(0,1.6fr)_140px_minmax(0,1fr)_140px_120px] gap-4 border-b border-border bg-secondary/40 px-5 py-2.5 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+        <div className="grid grid-cols-[minmax(0,1.6fr)_130px_minmax(0,1fr)_140px_110px_120px] gap-4 border-b border-border bg-secondary/40 px-5 py-2.5 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
           <div>Company</div>
           <div>Stage</div>
           <div>Founders</div>
           <div>HQ · headcount</div>
+          <div>Relations</div>
           <div>Last touch</div>
         </div>
         {companies.map((c, i) => {
           const deal = deals.find((d) => d.id === c.dealId);
           const yourVerdict = deal?.verdicts.find((v) => v.teammateId === 'me');
+          const relationCounts = relationCountsForCompany(c, artifacts);
           return (
             <button
               key={c.id}
               onClick={() => c.dealId && onOpenDeal(c.dealId)}
               className={cn(
-                'grid w-full grid-cols-[minmax(0,1.6fr)_140px_minmax(0,1fr)_140px_120px] items-center gap-4 px-5 py-3.5 text-left transition-colors hover:bg-secondary/30',
+                'grid w-full grid-cols-[minmax(0,1.6fr)_130px_minmax(0,1fr)_140px_110px_120px] items-center gap-4 px-5 py-3.5 text-left transition-colors hover:bg-secondary/30',
                 i !== companies.length - 1 && 'border-b border-border',
                 !c.dealId && 'cursor-default',
               )}
@@ -71,6 +77,11 @@ export default function Companies({ onOpenDeal }: { onOpenDeal: (id: string) => 
               </div>
               <div className="text-[12.5px] text-muted-foreground">
                 {c.hq ?? '—'} {typeof c.headcount === 'number' && <span className="text-muted-foreground/70">· {c.headcount}</span>}
+              </div>
+              <div className="text-[12px] text-muted-foreground">
+                <span className="font-mono text-foreground tabular-nums">{relationCounts.artifacts}</span> artifacts
+                <span className="mx-1 text-muted-foreground/50">·</span>
+                <span className="font-mono text-foreground tabular-nums">{relationCounts.meetings}</span> mtgs
               </div>
               <div className="text-[12px] text-muted-foreground">{c.lastTouch}</div>
             </button>
