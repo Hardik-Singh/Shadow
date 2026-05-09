@@ -2,28 +2,25 @@ const { randomUUID } = require('crypto');
 const config = require('../config');
 const bus = require('../bus');
 const hs = require('../ingest/hyperspell');
-const { makeEnvelope } = require('../signal');
-const queue = require('../ingest/queue');
+const ctx = require('../context');
+const MemoryRepo = require('../repos/memory');
 const registry = require('../actions/registry');
 
 const DEBOUNCE_MS = 1500;
-const recentEnvelopes = [];
+const recentMems = [];           // recent Memory rows (newest at end)
 const RECENT_KEEP = 30;
 
 let lastRunAt = 0;
 let pendingTimer = null;
 let lastSuggestions = [];
 
-function pushRecent(env) {
-  recentEnvelopes.push(env);
-  if (recentEnvelopes.length > RECENT_KEEP) recentEnvelopes.shift();
+function pushRecent(m) {
+  recentMems.push(m);
+  if (recentMems.length > RECENT_KEEP) recentMems.shift();
 }
 
 function recentText() {
-  return recentEnvelopes
-    .slice(-12)
-    .map((e) => `[${e.type}] ${e.content}`)
-    .join('\n');
+  return recentMems.slice(-12).map((m) => `[${m.kind}] ${m.text}`).join('\n');
 }
 
 function extractCompany(text) {
@@ -34,16 +31,20 @@ function extractCompany(text) {
 async function pickActions(context) {
   const companyHint = extractCompany(context) || 'this company';
   const allActions = registry.list();
+  // Probe Hyperspell for past click/ignore patterns per action_id.
   const ranked = await Promise.all(
     allActions.map(async (a) => {
-      const probe = await hs.query({
-        text: `user clicked ${a.id}`,
-        k: 5,
-        halfLifeHours: 168,
-        types: ['click', 'ignore'],
-      });
-      const score = probe.reduce((s, h) => s + (h.adjusted || 0), 0);
-      return { action: a, score };
+      try {
+        const probe = await hs.search({
+          scope: 'partner', partner: ctx.ME, firm: ctx.FIRM,
+          query: `user clicked ${a.id}`, k: 5, halfLifeHours: 168,
+          sources: ['vault'],
+        });
+        const score = probe.reduce((s, h) => s + (h.adjusted || 0), 0);
+        return { action: a, score };
+      } catch {
+        return { action: a, score: 0 };
+      }
     })
   );
   ranked.sort((a, b) => b.score - a.score || Math.random() - 0.5);
@@ -83,25 +84,20 @@ function schedule() {
   const since = Date.now() - lastRunAt;
   if (pendingTimer) return;
   const wait = Math.max(0, DEBOUNCE_MS - since);
-  pendingTimer = setTimeout(() => {
-    pendingTimer = null;
-    run();
-  }, wait);
+  pendingTimer = setTimeout(() => { pendingTimer = null; run(); }, wait);
 }
 
 function clickSuggestion(id) {
   const s = lastSuggestions.find((x) => x.id === id);
   if (!s) return null;
-  const env = makeEnvelope({
-    type: 'click',
-    content: `user clicked: ${s.action_id} on ${s.company_hint}`,
-    meta: { suggestion_id: s.id, action_id: s.action_id, company_hint: s.company_hint },
+  // Click → first-class memory, valence +1
+  MemoryRepo.create({
+    kind: 'click',
+    text: `clicked: ${s.action_id} on ${s.company_hint}`,
     valence: 1,
-    userId: config.hyperspell.userId,
+    meta: { suggestion_id: s.id, action_id: s.action_id, company_hint: s.company_hint },
   });
-  bus.emit('signal', env);
-  bus.emit('signal:click', env);
-  queue.enqueue('click', () => hs.ingest(env));
+  // Sibling suggestions become ignores (the user picked X over Y, Z)
   for (const sib of lastSuggestions) {
     if (sib.id === s.id) continue;
     ignoreSuggestion(sib);
@@ -110,29 +106,23 @@ function clickSuggestion(id) {
 }
 
 function ignoreSuggestion(s) {
-  const env = makeEnvelope({
-    type: 'ignore',
-    content: `user ignored: ${s.action_id} on ${s.company_hint}`,
-    meta: { suggestion_id: s.id, action_id: s.action_id, company_hint: s.company_hint },
+  MemoryRepo.create({
+    kind: 'ignore',
+    text: `ignored: ${s.action_id} on ${s.company_hint}`,
     valence: -1,
-    userId: config.hyperspell.userId,
+    meta: { suggestion_id: s.id, action_id: s.action_id, company_hint: s.company_hint },
   });
-  bus.emit('signal', env);
-  bus.emit('signal:ignore', env);
-  queue.enqueue('ignore', () => hs.ingest(env));
 }
 
 function start() {
-  bus.on('signal', (env) => {
-    if (env.type === 'screen' || env.type === 'voice' || env.type === 'file') {
-      pushRecent(env);
+  bus.on('memory:write', ({ entry }) => {
+    if (entry.kind === 'screen' || entry.kind === 'voice' || entry.kind === 'file') {
+      pushRecent(entry);
       schedule();
     }
   });
 }
 
-function getLastSuggestions() {
-  return lastSuggestions;
-}
+function getLastSuggestions() { return lastSuggestions; }
 
 module.exports = { start, clickSuggestion, getLastSuggestions, extractCompany };

@@ -1,47 +1,44 @@
-const config = require('../config');
 const hs = require('../ingest/hyperspell');
 const nia = require('../ingest/nia');
-const { llmJson, summarizeHits, writeBack } = require('./_synth');
+const ctx = require('../context');
+const { llmJson, summarizeHits, hsContextStats, writeBack } = require('./_synth');
 
-const SYSTEM = `You produce sourcing sheets for the user — a one-page company brief in the user's voice.
-- Use BEHAVIORAL CONTEXT for tone and what the user typically wants to dig on.
-- Use WORLD FACTS for the company / market / team data.
-- Output strict JSON. Schema:
-{ "company": string, "founded": string, "location": string, "team_size": string,
-  "ask": string, "product": string, "team": string, "market": string,
-  "competitors": [string], "recent_news": [string],
-  "what_to_dig_on": [string] }`;
+const SYSTEM = `You produce sourcing sheets in the partner's voice. JSON only.
+Schema: { "company": str, "founded": str, "location": str, "team_size": str,
+  "ask": str, "product": str, "team": str, "market": str,
+  "competitors": [str], "recent_news": [str], "what_to_dig_on": [str] }`;
 
-async function run({ company }) {
+async function run({ company } = {}) {
   const co = company || 'this company';
-  const [thesis, deckChunks] = await Promise.all([
-    hs.query({ text: 'what the user wants to dig on in early-stage companies', k: 8, halfLifeHours: 720 }),
-    hs.query({ text: `${co} company details`, k: 12, halfLifeHours: 24, types: ['file'] }),
+  const partner = ctx.ME, firm = ctx.FIRM;
+  const [thesis, deck, firmCtx] = await Promise.all([
+    hs.search({ scope: 'partner', partner, firm, query: 'what user wants to dig on early-stage companies', sources: ['vault'], k: 8, halfLifeHours: 720 }),
+    hs.search({ scope: 'partner', partner, firm, query: `${co} company details`, sources: ['vault'], k: 12, halfLifeHours: 24 }),
+    hs.search({ scope: 'firm', partner, firm, query: `${co} sector firm context`, sources: ['vault'], k: 6, halfLifeHours: 8760 }),
   ]);
-  const [companies, news, people] = await nia.multiQuery([
-    { corpus: 'companies', text: co, k: 6 },
-    { corpus: 'news', text: co, k: 6 },
-    { corpus: 'people', text: `${co} founders team`, k: 6 },
+  const [companies, news, people] = await Promise.all([
+    nia.web ? nia.web(co, 'company') : Promise.resolve([]),
+    nia.web ? nia.web(co, 'news') : Promise.resolve([]),
+    nia.web ? nia.web(`${co} founders team`, 'github') : Promise.resolve([]),
   ]);
-
-  const userPrompt = [
+  const stats = hsContextStats([thesis, deck, firmCtx]);
+  const niaTotal = (companies || []).length + (news || []).length + (people || []).length;
+  const prompt = [
     `COMPANY: ${co}`,
-    'BEHAVIORAL CONTEXT (user dig-areas):', summarizeHits(thesis),
-    'DECK CONTEXT:', summarizeHits(deckChunks),
-    'WORLD FACTS — company:', summarizeHits(companies),
-    'WORLD FACTS — news:', summarizeHits(news),
-    'WORLD FACTS — people:', summarizeHits(people),
+    `HYPERSPELL CONTEXT — ${stats.total} memories (${stats.by_scope.partner} personal · ${stats.by_scope.firm} firm)`,
+    `dig-areas (${thesis.length}):`, summarizeHits(thesis),
+    `deck (${deck.length}):`, summarizeHits(deck),
+    `firm context (${firmCtx.length}):`, summarizeHits(firmCtx),
+    `world — company (${(companies || []).length}):`, summarizeHits(companies),
+    `world — news (${(news || []).length}):`, summarizeHits(news),
+    `world — team (${(people || []).length}):`, summarizeHits(people),
     'Output JSON.',
   ].join('\n');
-
   let sheet;
-  try { sheet = await llmJson({ system: SYSTEM, user: userPrompt }); }
+  try { sheet = await llmJson({ system: SYSTEM, user: prompt }); }
   catch (err) { sheet = { _error: err.message }; }
-
-  const data = { company: co, sheet, flags: !nia.enabled ? ['limited external data'] : [] };
-  if (!sheet._error && !sheet._stub) {
-    writeBack({ kind: 'sourcing_sheet', company: co, text: JSON.stringify(sheet, null, 2), userId: config.hyperspell.userId });
-  }
+  const data = { company: co, sheet, sources: { hyperspell_total: stats.total, nia_total: niaTotal }, flags: niaTotal === 0 ? ['limited external data'] : [] };
+  if (!sheet._error && !sheet._stub) writeBack({ kind: 'sourcing_sheet', company: co, text: JSON.stringify(sheet, null, 2) });
   return { kind: 'sourcing_sheet', data };
 }
 

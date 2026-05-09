@@ -1,21 +1,20 @@
-const config = require('../config');
 const hs = require('../ingest/hyperspell');
+const ctx = require('../context');
 const { writeBack } = require('./_synth');
 
-async function run({ company }) {
+async function run({ company } = {}) {
   const co = company || 'this company';
-  const probes = await hs.query({ text: `${co} signals strengths risks`, k: 8, halfLifeHours: 24 });
+  const probes = await hs.search({
+    scope: 'partner', partner: ctx.ME, firm: ctx.FIRM,
+    query: `${co} signals strengths risks`, sources: ['vault'], k: 8, halfLifeHours: 24,
+  });
   const data = {
     company: co,
     flagged_at: Date.now(),
-    signals: probes.slice(0, 6).map((h) => h.content || h.text || '').filter(Boolean),
+    signals: probes.slice(0, 6).map((h) => (h.text || '').replace(/^\[shadow\|[^\]]+\]\n?/, '').trim()).filter(Boolean),
+    sources: { hyperspell_total: probes.length },
   };
-  writeBack({
-    kind: 'flag',
-    company: co,
-    text: `FLAGGED: ${co}\n` + data.signals.map((s) => `- ${s}`).join('\n'),
-    userId: config.hyperspell.userId,
-  });
+  writeBack({ kind: 'flag', company: co, text: `FLAGGED: ${co}\n` + data.signals.map((s) => `- ${s}`).join('\n') });
   return { kind: 'flag', data };
 }
 

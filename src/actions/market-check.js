@@ -1,43 +1,39 @@
-const config = require('../config');
 const hs = require('../ingest/hyperspell');
 const nia = require('../ingest/nia');
-const { llmJson, summarizeHits, writeBack } = require('./_synth');
+const ctx = require('../context');
+const { llmJson, summarizeHits, hsContextStats, writeBack } = require('./_synth');
 
-const SYSTEM = `You produce a market/TAM check card.
-- Use BEHAVIORAL CONTEXT for the user's TAM skepticism patterns. Echo phrases they actually said.
-- Use WORLD FACTS for real comparable companies/exits.
-- Output strict JSON. Schema:
-{ "claimed_tam": string, "shadow_assessment": string, "comparable_exits": [string],
-  "user_skepticism_signals": [string] }`;
+const SYSTEM = `You produce a market/TAM check card. JSON only.
+Schema: { "claimed_tam": str, "shadow_assessment": str, "comparable_exits": [str], "user_skepticism_signals": [str] }`;
 
-async function run({ company }) {
+async function run({ company } = {}) {
   const co = company || 'this company';
-  const [tamSkepticism, deckChunks] = await Promise.all([
-    hs.query({ text: 'user TAM skepticism made-up market size', k: 8, halfLifeHours: 168, types: ['voice'] }),
-    hs.query({ text: `${co} market size TAM`, k: 6, halfLifeHours: 24, types: ['file'] }),
+  const partner = ctx.ME, firm = ctx.FIRM;
+  const [tamSkepticism, deckMarket, firmComps] = await Promise.all([
+    hs.search({ scope: 'partner', partner, firm, query: 'TAM skepticism made-up market size', sources: ['vault'], k: 8, halfLifeHours: 168 }),
+    hs.search({ scope: 'partner', partner, firm, query: `${co} market TAM`, sources: ['vault'], k: 6, halfLifeHours: 24 }),
+    hs.search({ scope: 'firm', partner, firm, query: `comparable exits ${co} space`, sources: ['vault'], k: 6, halfLifeHours: 8760 }),
   ]);
-  const [companies, news] = await nia.multiQuery([
-    { corpus: 'companies', text: `${co} comparable companies market`, k: 6 },
-    { corpus: 'news', text: `${co} market exits`, k: 6 },
+  const [comps, news] = await Promise.all([
+    nia.web ? nia.web(`${co} comparable companies market`, 'company') : Promise.resolve([]),
+    nia.web ? nia.web(`${co} market exits`, 'news') : Promise.resolve([]),
   ]);
-
-  const userPrompt = [
+  const stats = hsContextStats([tamSkepticism, deckMarket, firmComps]);
+  const prompt = [
     `COMPANY: ${co}`,
-    'BEHAVIORAL CONTEXT (TAM skepticism):', summarizeHits(tamSkepticism),
-    'DECK CONTEXT (market claims):', summarizeHits(deckChunks),
-    'WORLD FACTS — comps:', summarizeHits(companies),
-    'WORLD FACTS — exits/news:', summarizeHits(news),
+    `HYPERSPELL — ${stats.total} memories`,
+    `TAM skepticism (${tamSkepticism.length}):`, summarizeHits(tamSkepticism),
+    `deck market claims (${deckMarket.length}):`, summarizeHits(deckMarket),
+    `firm comp history (${firmComps.length}):`, summarizeHits(firmComps),
+    `world — comps (${(comps || []).length}):`, summarizeHits(comps),
+    `world — exits/news (${(news || []).length}):`, summarizeHits(news),
     'Output JSON.',
   ].join('\n');
-
   let card;
-  try { card = await llmJson({ system: SYSTEM, user: userPrompt, maxTokens: 800 }); }
+  try { card = await llmJson({ system: SYSTEM, user: prompt, maxTokens: 800 }); }
   catch (err) { card = { _error: err.message }; }
-
-  const data = { company: co, card, flags: !nia.enabled ? ['limited external data'] : [] };
-  if (!card._error && !card._stub) {
-    writeBack({ kind: 'market_check', company: co, text: JSON.stringify(card, null, 2), userId: config.hyperspell.userId });
-  }
+  const data = { company: co, card, sources: { hyperspell_total: stats.total } };
+  if (!card._error && !card._stub) writeBack({ kind: 'market_check', company: co, text: JSON.stringify(card, null, 2) });
   return { kind: 'market_check', data };
 }
 

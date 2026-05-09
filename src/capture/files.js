@@ -1,10 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const config = require('../config');
-const bus = require('../bus');
-const { makeEnvelope } = require('../signal');
-const queue = require('../ingest/queue');
-const hs = require('../ingest/hyperspell');
+const MemoryRepo = require('../repos/memory');
 
 const CHUNK_TARGET = 1000;
 const CHUNK_MIN = 200;
@@ -56,15 +52,21 @@ async function ingestFile(filePath) {
     return { fileName, chunks: 0 };
   }
   const chunks = chunkText(text);
+  // Write a single "ingested" summary line to the memory log (matches dashboard style:
+  // 'Acme Inc Series A deck ingested · 22 pages')
+  const pages = chunks.length;
+  MemoryRepo.create({
+    kind: 'file',
+    text: `${fileName} ingested · ${pages} chunk${pages === 1 ? '' : 's'}`,
+    meta: { file_name: fileName, chunk_total: pages, chunk_idx: -1 },
+  });
+  // Then write each chunk as its own searchable memory.
   chunks.forEach((content, idx) => {
-    const env = makeEnvelope({
-      type: 'file',
-      content,
+    MemoryRepo.create({
+      kind: 'file',
+      text: content,
       meta: { file_name: fileName, chunk_idx: idx, chunk_total: chunks.length },
-      userId: config.hyperspell.userId,
     });
-    bus.emit('signal', env);
-    queue.enqueue('file', () => hs.ingest(env));
   });
   return { fileName, chunks: chunks.length };
 }

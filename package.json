@@ -9,6 +9,8 @@
     "syntax": "node -e \"['src/main.js','src/preload.js','src/config.js','src/bus.js','src/signal.js','src/ipc.js','src/capture/screen.js','src/capture/caption.js','src/capture/voice.js','src/capture/files.js','src/ingest/hyperspell.js','src/ingest/nia.js','src/ingest/queue.js','src/model/profile.js','src/suggest/engine.js','src/actions/registry.js','src/actions/_synth.js','src/actions/ic-memo.js','src/actions/sourcing-sheet.js','src/actions/founder-lookup.js','src/actions/market-check.js','src/actions/flag-deal.js'].forEach(f => { try { new (require('vm').Script)(require('fs').readFileSync(f,'utf8'), {filename:f}); console.log('ok', f); } catch (e) { console.error('FAIL', f, e.message); process.exit(1); } });\""
   },
   "dependencies": {
+    "hyperspell": "^1.0.0",
+    "nia-ai-ts": "^0.5.0",
     "pdf-parse": "^1.1.1"
   },
   "devDependencies": {

@@ -1,42 +1,38 @@
-const config = require('../config');
 const hs = require('../ingest/hyperspell');
 const nia = require('../ingest/nia');
-const { llmJson, summarizeHits, writeBack } = require('./_synth');
+const ctx = require('../context');
+const { llmJson, summarizeHits, hsContextStats, writeBack } = require('./_synth');
 
-const SYSTEM = `You produce a founder/CTO profile card.
-- Use BEHAVIORAL CONTEXT for what the user typically values in founders.
-- Use WORLD FACTS for actual background data.
-- Output strict JSON. Schema:
-{ "name": string, "role": string, "previous": [string],
-  "github_signal": string, "prior_startups": [string],
-  "shadow_read": string }`;
+const SYSTEM = `You produce a founder/CTO profile card. JSON only.
+Schema: { "name": str, "role": str, "previous": [str], "github_signal": str,
+  "prior_startups": [str], "shadow_read": str }`;
 
-async function run({ company }) {
+async function run({ company } = {}) {
   const co = company || 'this company';
-  const [founderViews] = await Promise.all([
-    hs.query({ text: 'what the user thinks about technical founders', k: 8, halfLifeHours: 720 }),
+  const partner = ctx.ME, firm = ctx.FIRM;
+  const [founderViews, firmFounderHistory] = await Promise.all([
+    hs.search({ scope: 'partner', partner, firm, query: 'what user thinks about technical founders', sources: ['vault'], k: 8, halfLifeHours: 720 }),
+    hs.search({ scope: 'firm', partner, firm, query: 'firm founder profile patterns successful invests', sources: ['vault'], k: 6, halfLifeHours: 8760 }),
   ]);
-  const [people, companies] = await nia.multiQuery([
-    { corpus: 'people', text: `${co} founder CTO`, k: 6 },
-    { corpus: 'companies', text: co, k: 4 },
+  const [people, companies] = await Promise.all([
+    nia.web ? nia.web(`${co} CTO founder background`, 'github') : Promise.resolve([]),
+    nia.web ? nia.web(co, 'company') : Promise.resolve([]),
   ]);
-
-  const userPrompt = [
+  const stats = hsContextStats([founderViews, firmFounderHistory]);
+  const prompt = [
     `COMPANY: ${co}`,
-    'BEHAVIORAL CONTEXT (founder preferences):', summarizeHits(founderViews),
-    'WORLD FACTS — people:', summarizeHits(people),
-    'WORLD FACTS — company:', summarizeHits(companies),
+    `HYPERSPELL — ${stats.total} memories (${stats.by_scope.partner} personal · ${stats.by_scope.firm} firm)`,
+    `founder preferences (${founderViews.length}):`, summarizeHits(founderViews),
+    `firm history (${firmFounderHistory.length}):`, summarizeHits(firmFounderHistory),
+    `world — people (${(people || []).length}):`, summarizeHits(people),
+    `world — company (${(companies || []).length}):`, summarizeHits(companies),
     'Output JSON.',
   ].join('\n');
-
   let card;
-  try { card = await llmJson({ system: SYSTEM, user: userPrompt, maxTokens: 800 }); }
+  try { card = await llmJson({ system: SYSTEM, user: prompt, maxTokens: 800 }); }
   catch (err) { card = { _error: err.message }; }
-
-  const data = { company: co, card, flags: !nia.enabled ? ['limited external data'] : [] };
-  if (!card._error && !card._stub) {
-    writeBack({ kind: 'founder_profile', company: co, text: JSON.stringify(card, null, 2), userId: config.hyperspell.userId });
-  }
+  const data = { company: co, card, sources: { hyperspell_total: stats.total }, flags: ((people || []).length + (companies || []).length) === 0 ? ['limited external data'] : [] };
+  if (!card._error && !card._stub) writeBack({ kind: 'founder_profile', company: co, text: JSON.stringify(card, null, 2) });
   return { kind: 'founder_profile', data };
 }
 

@@ -1,11 +1,8 @@
 const { desktopCapturer, screen } = require('electron');
 const crypto = require('crypto');
 const config = require('../config');
-const bus = require('../bus');
-const { makeEnvelope } = require('../signal');
 const { captionImage } = require('./caption');
-const queue = require('../ingest/queue');
-const hs = require('../ingest/hyperspell');
+const MemoryRepo = require('../repos/memory');
 
 let timer = null;
 let lastHash = null;
@@ -48,14 +45,11 @@ async function tick() {
 }
 
 function writeEnvelope(caption, dwellMs) {
-  const env = makeEnvelope({
-    type: 'screen',
-    content: caption,
-    meta: { dwell_ms: dwellMs },
-    userId: config.hyperspell.userId,
-  });
-  bus.emit('signal', env);
-  queue.enqueue('screen', () => hs.ingest(env));
+  const dwellSec = Math.round(dwellMs / 1000);
+  const text = dwellSec >= 5
+    ? `${caption} · ${dwellSec}s dwell`
+    : caption;
+  MemoryRepo.create({ kind: 'screen', text, meta: { dwell_ms: dwellMs } });
 }
 
 function start() {

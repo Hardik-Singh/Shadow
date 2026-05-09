@@ -1,8 +1,5 @@
 const config = require('../config');
-const bus = require('../bus');
-const hs = require('../ingest/hyperspell');
-const queue = require('../ingest/queue');
-const { makeEnvelope } = require('../signal');
+const MemoryRepo = require('../repos/memory');
 
 async function llmJson({ system, user, model, maxTokens = 1500 }) {
   if (!config.anthropic.enabled) {
@@ -37,19 +34,40 @@ function summarizeHits(hits, label, max = 8) {
   const top = (hits || []).slice(0, max);
   if (!top.length) return `(no ${label} memories)`;
   return top
-    .map((h, i) => `${i + 1}. ${h.content || h.text || ''}`.trim())
+    .map((h, i) => {
+      const body = (h.text || h.content || '').replace(/^\[shadow\|[^\]]+\]\n?/, '').trim();
+      const score = typeof h.adjusted === 'number' ? h.adjusted.toFixed(2) : '';
+      return `${i + 1}. [${score}] ${body}`;
+    })
     .join('\n');
 }
 
-function writeBack({ kind, company, text, userId }) {
-  const env = makeEnvelope({
-    type: 'file',
-    content: text,
-    meta: { file_name: `${kind}_${(company || 'untitled').replace(/\s+/g, '_')}.md`, company_hint: company, artifact_kind: kind },
-    userId,
-  });
-  bus.emit('signal', env);
-  queue.enqueue('artifact', () => hs.ingest(env));
+// Aggregate counts across multiple retrieval bundles so the prompt and the
+// resulting artifact card can both display "drawn from N hyperspell memories".
+function hsContextStats(bundles) {
+  const flat = bundles.flat();
+  return {
+    total: flat.length,
+    by_scope: {
+      partner: flat.filter((h) => h.scope === 'partner').length,
+      firm: flat.filter((h) => h.scope === 'firm').length,
+    },
+    by_kind: flat.reduce((acc, h) => {
+      const k = (h.meta && h.meta.kind) || 'unknown';
+      acc[k] = (acc[k] || 0) + 1;
+      return acc;
+    }, {}),
+  };
 }
 
-module.exports = { llmJson, summarizeHits, writeBack };
+function writeBack({ kind, company, text }) {
+  // Generated artifacts mirror back into Hyperspell as a memory so future
+  // queries see prior outputs. The MemoryRepo handles the partner+firm fanout.
+  MemoryRepo.create({
+    kind: 'note',
+    text: `[artifact:${kind}] ${company || 'untitled'}\n${text}`,
+    meta: { artifact_kind: kind, company_hint: company },
+  });
+}
+
+module.exports = { llmJson, summarizeHits, hsContextStats, writeBack };
