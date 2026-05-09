@@ -5,39 +5,35 @@
 
 ## what it is
 
-Shadow watches you work -- your screen, your voice, documents you drop in -- and builds a live behavioral model of how you think. it runs silently in the corner of your screen, predicts what you need next, and surfaces clickable actions to do the work for you.
+Shadow watches a venture capitalist work -- their screen, their voice, documents they drop in -- and builds a live behavioral model of how they think. it runs silently in the corner of the screen as a HUD overlay, predicts what they need next, surfaces clickable action pills, and generates the analyst work that would otherwise take hours.
 
-not a chatbot. not a summarizer. a judgment clone that gets sharper every hour.
+every partner at a firm runs shadow. their individual models combine into a firm brain -- the collective judgment of everyone who has ever worked there, queryable, alive, and compounding forever.
 
 ---
 
-## the demo problem + fix
+## the problem
 
-shadow needs behavioral history to be impressive. you don't have any at 9am.
+a top VC firm sees 200+ companies a month. the work behind each one -- sourcing sheets, founder research, market comps, IC memos -- falls on analysts and associates and takes hours per deal. but the most valuable thing, the senior partner's actual instincts, never gets captured at all. when they leave, it leaves with them.
 
-**solution: pre-seed with synthetic history before the event.**
-
-create and feed in before you start:
-- 5-6 past memos you "wrote" (mix of pass/invest, in your voice)
-- voice notes you "left yourself" while evaluating companies
-- 2-3 sourcing sheets in your style
-- 1 investment thesis doc -- what you care about, 1 page
-
-shadow treats it as real history. demo feels like it's been watching you for weeks.
+shadow fixes both. it eliminates the hours of analyst work and preserves the judgment that took 20 years to build.
 
 ---
 
 ## the core loop
 
 ```
-you read a document
-→ shadow watches your screen + listens to your voice
-→ shadow figures out what you're looking at
-→ shadow predicts what you want to do next
-→ clickable suggestion appears in the HUD
-→ you click it → shadow does the work
-→ you ignore it → shadow learns you didn't want that
-→ model gets sharper
+partner reads a pitch deck
+→ shadow watches screen + listens to voice
+→ classifies what they're looking at
+→ tracks how long they spend on each section
+→ captures what they say out loud
+→ writes behavioral signals to memory
+→ predicts what they want to do next
+→ surfaces suggestion pills in the HUD
+→ partner clicks a pill → shadow does the work
+→ partner ignores a pill → shadow learns that
+→ artifact generated → appears in HUD + dashboard
+→ model gets sharper with every signal
 ```
 
 ---
@@ -46,252 +42,469 @@ you read a document
 
 ---
 
-### part 1: the capture
+### 1. the capture layer
 
-shadow runs silently in the background capturing three streams:
+shadow runs silently capturing three streams simultaneously:
 
 **screen**
-takes a screenshot every few seconds. vision model reads it and figures out what you're looking at. not just "a pdf" -- specifically "team slide, Series A deck, reading about the CTO."
-
-tracks dwell time. 30 seconds on the team slide is a signal. 3 seconds on the market size slide and scrolling past is a different signal.
+screenshots every few seconds. vision model reads context -- not just "a pdf" but specifically "team slide, Series A deck, reading about the CTO." dwell time is signal. 30 seconds on the team slide is meaningful. 3 seconds and a scroll is a different signal entirely.
 
 **voice**
-mic is always on. transcribes everything you say out loud while working:
+mic always on. transcribes everything said out loud while working:
 - "hmm this TAM feels made up"
 - "i wonder if they've talked to stripe"
 - "short cofounder relationship, flag that"
+- "love this CTO background"
 
-these are the richest signals. what you mutter is what you actually think.
+what someone mutters is what they actually think. richest behavioral signal in the system.
 
 **file drop**
-drag any file onto shadow -- pitch deck, one pager, CIM, earnings call transcript. shadow ingests it, chunks it, adds it to the current context.
+drag any file onto shadow -- pitch deck, one pager, cap table, founder bio. shadow ingests, chunks, and adds to current context immediately. also pulls in connected sources automatically (see integrations below).
 
-every signal gets timestamped and stored:
+every signal timestamped and stored:
 ```
-{ type: "screen", content: "team slide, CTO is ex-Google", dwell_ms: 34000 }
+{ type: "screen", content: "team slide, CTO is ex-Stripe", dwell_ms: 34000 }
 { type: "voice", content: "i don't trust this CAC number" }
 { type: "file", content: "Series A deck, Acme Inc, $8M ask" }
+{ type: "slack", content: "thread about Acme from 3 weeks ago" }
 ```
 
 ---
 
-### part 2: the HUD
+### 2. the HUD
 
-floating overlay, bottom right corner of your screen. always visible, never in the way. this is what judges watch during the demo -- they see shadow learning you in real time.
+floating overlay, bottom right corner of the screen. always visible, never intrusive. this is the live interface -- the dashboard is for reviewing work, the HUD is for doing it.
 
 ```
 ┌─────────────────────────────────┐
 │  ◈ SHADOW              ● live  │
+│  running 4h 32m                 │
 ├─────────────────────────────────┤
-│  👁  team slide · Series A      │
-│  🎙  "i don't trust this CAC"   │
-│  ⚡  signal captured            │
+│  WRITING TO MEMORY              │
+│  💾 saving: skeptical of short  │
+│     cofounder relationships     │
+│  💾 updating: TAM sensitivity   │
+│     +12%                        │
+│  💾 saving: likes ex-Stripe     │
+│     CTOs                        │
 ├─────────────────────────────────┤
-│  YOUR PROFILE                   │
-│  ████████░░  technical founders │
-│  ███████░░░  B2B infrastructure │
-│  ██░░░░░░░░  consumer plays     │
+│  SHADOW SUGGESTS                │
 │                                 │
-│  confidence: 74% ↑              │
-│  signals today: 147             │
-├─────────────────────────────────┤
-│  SHADOW THINKS YOU WANT TO:     │
-│                                 │
-│  [ look up CTO on github →  ]   │
+│  [ look up CTO github →     ]   │
 │  [ check TAM comparables →  ]   │
 │  [ generate sourcing sheet →]   │
 ├─────────────────────────────────┤
-│  TODAY'S ARTIFACTS              │
-│  📄 Acme Inc · IC memo          │
-│  📊 B2B SaaS · comp table       │
-│  🏷  Flagged: short cofounder   │
+│  RECENT ARTIFACTS               │
+│  📄 Acme Inc · IC memo     →    │
+│  📊 B2B SaaS · comp table  →    │
+│  👤 James Chen · founder   →    │
+│  🏷  Flagged · short cofounder  │
 └─────────────────────────────────┘
 ```
 
-**how the HUD behaves:**
-- what you're reading updates every few seconds
-- last thing you said shows in real time
-- confidence score ticks up visibly as signals stack up
-- suggestions refresh every time shadow reads a new screen state
-- clicking a suggestion fires the action immediately
-- ignoring a suggestion is logged as a negative signal
-- artifacts accumulate below as you work
+**HUD behaviors:**
+
+- memory writes appear line by line in real time as shadow learns
+- suggestion pills refresh every time screen state changes
+- clicking a pill fires the action immediately
+- ignoring a pill is logged as a negative signal (shadow learns you didn't want that)
+- every artifact appears as a clickable link that deep links to the full artifact on the dashboard
+- artifacts animate in as they're generated
+
+**the memory write feed is the most important element.** judges and partners watching the HUD see shadow learning in real time. this is the behavioral capture made visible.
 
 ---
 
-### part 3: the actions (what you can click)
+### 3. the actions
 
-when shadow surfaces a suggestion you click it and it does the actual work. every output is a structured artifact card, not a wall of text.
-
----
-
-**suggestion: look up founder / CTO**
-shadow opens their github, linkedin, past companies. surfaces a card:
-```
-┌─────────────────────────────────────┐
-│  FOUNDER PROFILE · JAMES CHEN       │
-├─────────────────────────────────────┤
-│  prev: Stripe (eng lead, 4yr)       │
-│  github: 340 commits last 90 days   │
-│  2 prev startups: 1 acq, 1 shutdown │
-│                                     │
-│  shadow: strong technical signal    │
-│  you usually like this profile      │
-└─────────────────────────────────────┘
-```
+when a suggestion pill is clicked shadow does the actual work and returns a structured artifact. every artifact is a card, not a wall of text. all generated in the partner's voice using their behavioral model.
 
 ---
 
-**suggestion: generate sourcing sheet**
-full background file on the company. everything you'd want before a first call.
-```
-┌─────────────────────────────────────┐
-│  SOURCING SHEET · ACME INC          │
-├─────────────────────────────────────┤
-│  founded: 2023 · SF · 8 employees   │
-│  ask: $8M Series A                  │
-│  product: B2B infra for agents      │
-│                                     │
-│  team: ...                          │
-│  market: ...                        │
-│  competitors: ...                   │
-│  recent news: ...                   │
-│  what you'd want to dig on: ...     │
-└─────────────────────────────────────┘
-```
+**sourcing sheet**
 
----
+full background file on a company. everything needed before a first call. auto-pulls from connected sources.
 
-**suggestion: generate IC memo**
-investment committee memo written in your voice with your specific conviction level and skepticisms baked in.
 ```
-┌─────────────────────────────────────┐
-│  IC MEMO · ACME INC                 │
-│  generated by shadow                │
-├─────────────────────────────────────┤
-│  RECOMMENDATION: INVEST             │
-│  conviction: medium-high            │
-│                                     │
-│  why i like it:                     │
-│  ...                                │
-│                                     │
-│  what would kill this deal:         │
-│  ...                                │
-│                                     │
-│  questions before IC:               │
-│  ...                                │
-├─────────────────────────────────────┤
-│  [ copy ]  [ edit ]  [ flag ]       │
-└─────────────────────────────────────┘
+┌─────────────────────────────────────────┐
+│  SOURCING SHEET · ACME INC              │
+│  generated by shadow                    │
+├─────────────────────────────────────────┤
+│  founded: 2023 · SF · 8 employees       │
+│  stage: Series A · ask: $8M             │
+│  product: B2B infra for AI agents       │
+│                                         │
+│  TEAM                                   │
+│  CEO: prior founder, 1 exit (acq)       │
+│  CTO: ex-Stripe eng lead, 4yr           │
+│  cofounders met: 14 months ago          │
+│                                         │
+│  MARKET                                 │
+│  claimed TAM: $40B                      │
+│  shadow assessment: plausible           │
+│  comparable exits: Datadog $38B IPO     │
+│                                         │
+│  COMPETITORS                            │
+│  · Datadog (enterprise, legacy)         │
+│  · Honeycomb (developer-focused)        │
+│  · 3 YC companies in adjacent space    │
+│                                         │
+│  RECENT NEWS                            │
+│  · launched at YC demo day last week    │
+│  · TechCrunch coverage 3 days ago       │
+│                                         │
+│  FROM FIRM MEMORY                       │
+│  · your partner looked at a similar    │
+│    company in 2021, passed on GTM      │
+│  · slack thread from 2 weeks ago       │
+│    about this space (3 messages)       │
+│                                         │
+│  WHAT YOU'D WANT TO DIG ON             │
+│  · CTO shipping history                │
+│  · enterprise GTM motion               │
+│  · cofounder relationship depth        │
+├─────────────────────────────────────────┤
+│  [ generate IC memo ]  [ flag deal ]    │
+│  [ founder breakdown ] [ comp table ]  │
+└─────────────────────────────────────────┘
 ```
 
 ---
 
-**suggestion: check TAM / market comps**
-shadow checks the TAM claim against comparable companies and recent deals.
-```
-┌─────────────────────────────────────┐
-│  MARKET CHECK · AI INFRA            │
-├─────────────────────────────────────┤
-│  claimed TAM: $40B                  │
-│  shadow assessment: plausible       │
-│                                     │
-│  comparable exits:                  │
-│  · Datadog IPO: $38B                │
-│  · Honeycomb acq: ~$200M            │
-│                                     │
-│  you flagged TAM skepticism:        │
-│  "made up" said 3x today            │
-└─────────────────────────────────────┘
-```
+**founder breakdown**
 
----
+deep profile on any founder. pulled from public sources and firm memory.
 
-**suggestion: flag this deal**
-one click to add a deal to your watchlist with shadow's read attached.
 ```
-┌─────────────────────────────────────┐
-│  DEAL FLAGGED · ACME INC            │
-├─────────────────────────────────────┤
-│  shadow verdict: investigate        │
-│  your likely take: cautious yes     │
-│                                     │
-│  key signals:                       │
-│  ★ strong technical founder         │
-│  ⚠  TAM claim unverified            │
-│  ⚠  cofounders met 8 months ago     │
-│                                     │
-│  [ generate full memo ]             │
-│  [ schedule follow-up ]             │
-│  [ pass                ]            │
-└─────────────────────────────────────┘
+┌─────────────────────────────────────────┐
+│  FOUNDER PROFILE · JAMES CHEN           │
+│  CTO, Acme Inc                          │
+├─────────────────────────────────────────┤
+│  BACKGROUND                             │
+│  Stripe · eng lead · 4 years            │
+│  prev startup: shut down 2021           │
+│  education: MIT CS 2017                 │
+│                                         │
+│  SIGNAL                                 │
+│  github: 340 commits last 90 days       │
+│  open source: 2 projects, 800 stars     │
+│  writing: technical blog, 12 posts      │
+│                                         │
+│  SHADOW ASSESSMENT                      │
+│  strong technical signal                │
+│  you usually like this profile          │
+│  similar to 3 founders you've backed   │
+│                                         │
+│  FROM FIRM MEMORY                       │
+│  met James at YC demo day 2023          │
+│  email thread with partner A from      │
+│  6 months ago -- warm impression       │
+├─────────────────────────────────────────┤
+│  [ back to sourcing sheet ]             │
+└─────────────────────────────────────────┘
 ```
 
 ---
 
-## what shadow learns over time
+**IC memo**
 
-every click and ignore updates the behavioral model:
+investment committee memo written in the partner's voice. uses behavioral model to match their conviction level, skepticisms, and writing style.
 
-- clicked "look up CTO github" 8 out of 10 times → technical founder signal weighted high
-- always ignored "check consumer comps" → consumer plays not your thing
-- said "feels expensive" three times before passing → valuation sensitivity flag
-- spent 40+ mins on B2B infra decks, under 5 on consumer → preference locked in
-
-the model compounds. day 30 shadow is dramatically smarter about you than day 1.
-
----
-
-## finance domains
-
-same engine everywhere. only the artifact templates change.
-
-| domain | what you read | what shadow creates |
-|--------|--------------|-------------------|
-| venture capital | pitch decks, one pagers | sourcing sheet, IC memo, deal card |
-| hedge fund | 10-K, earnings calls, news | position thesis, trade note, risk flags |
-| private equity | CIM, financials, mgmt decks | due diligence summary, LBO notes |
-| investment banking | comps, precedents, models | pitchbook sections, comp table |
-
-demo skin: VC. same codebase for all of them.
-
----
-
-## demo script (3 mins)
-
-> "shadow has been watching me since 9am. i haven't told it anything."
-
-*show HUD. confidence 74%. 147 signals.*
-
-> "it's been building a model of how i think."
-
-*show profile weights. technical founders high. consumer low.*
-
-> "new company just landed. never seen it."
-
-*drag pitch deck onto screen live.*
-
-*HUD updates. three suggestion buttons appear.*
-
-> "shadow already knows what i want."
-
-*click "look up CTO" -- founder card appears.*
-*click "generate sourcing sheet" -- sheet builds in 20 seconds.*
-*click "generate IC memo" -- memo appears in your voice.*
-
-> "i didn't write a rule. i didn't write a prompt. i just worked."
+```
+┌─────────────────────────────────────────┐
+│  IC MEMO · ACME INC                     │
+│  generated by shadow                    │
+├─────────────────────────────────────────┤
+│  RECOMMENDATION: INVEST                 │
+│  conviction: medium-high                │
+│  suggested check: $2M                   │
+│                                         │
+│  WHY I LIKE IT                          │
+│  ...written in partner's voice...       │
+│                                         │
+│  WHAT WOULD KILL THIS DEAL              │
+│  ...specific concerns from behavioral   │
+│  model and connected firm context...    │
+│                                         │
+│  QUESTIONS BEFORE IC                    │
+│  · enterprise GTM motion                │
+│  · cofounder relationship history       │
+│  · why now on the timing                │
+│                                         │
+│  PULLED FROM                            │
+│  · your sourcing sheet                  │
+│  · slack: 2 relevant threads            │
+│  · firm history: 1 comparable deal      │
+├─────────────────────────────────────────┤
+│  [ copy ] [ edit ] [ send to IC ]       │
+└─────────────────────────────────────────┘
+```
 
 ---
 
-## rubric
+**comp table**
 
-| criterion | weight | how shadow scores |
-|-----------|--------|------------------|
-| cross-source synthesis | 30% | screen + voice + files + live web all synthesized through your behavioral model |
-| real work not just answers | 25% | every artifact is something you'd actually send -- memo, sourcing sheet, deal card |
-| hyperspell integration | 25% | behavioral model lives in hyperspell, removing it kills the product entirely |
-| demo + presentation | 10% | live on stage, judges watch it work, HUD is visually alive |
-| judge's personal rating | 10% | "what if your best judgment didn't leave when you did" |
+comparable companies and recent deals in the space.
+
+```
+┌─────────────────────────────────────────┐
+│  COMP TABLE · B2B INFRA / AI AGENTS     │
+├─────────────────────────────────────────┤
+│  company        stage   val    outcome  │
+│  ─────────────────────────────────────  │
+│  Datadog        IPO     $38B   public   │
+│  Honeycomb      Series C $100M private  │
+│  Lightstep      acq     $200M  SFDC     │
+│  Grafana        Series D $3B   private  │
+│                                         │
+│  recent rounds in space                 │
+│  · 3 seed rounds last 90 days           │
+│  · avg seed val: $15M                   │
+│  · 1 Series A at $40M val last month    │
+├─────────────────────────────────────────┤
+│  [ back to sourcing sheet ]             │
+└─────────────────────────────────────────┘
+```
+
+---
+
+**deal card**
+
+quick structured summary. the at-a-glance view for pipeline management.
+
+```
+┌─────────────────────────────────────────┐
+│  ACME INC                        ACTIVE │
+│  Series A · B2B SaaS · $8M ask          │
+├─────────────────────────────────────────┤
+│  shadow verdict:   INVESTIGATE          │
+│  your likely take: cautious yes         │
+├─────────────────────────────────────────┤
+│  ★ strong technical founder             │
+│  ★ clean comparable exits               │
+│  ⚠  TAM claim needs verification        │
+│  ⚠  short cofounder relationship        │
+├─────────────────────────────────────────┤
+│  👤 👤 👤  3 firm shadows reviewed      │
+│  2 agree · 1 disagrees                  │
+├─────────────────────────────────────────┤
+│  [ view sourcing sheet ]                │
+│  [ generate IC memo    ]                │
+│  [ see firm verdicts   ]                │
+│  [ pass                ]                │
+└─────────────────────────────────────────┘
+```
+
+---
+
+## website: two tabs
+
+---
+
+### tab 1: my shadow
+
+personal view. three sections.
+
+**your profile (left)**
+- behavioral weight bars: deal types favored, signals weighted most, what you consistently flag
+- confidence score -- how well shadow knows you
+- signals captured this week vs last
+- full memory log -- every entry editable and deletable
+- you can correct shadow if it got something wrong
+
+**your artifacts (center)**
+- every artifact shadow has generated for you
+- filterable by type: sourcing sheet / IC memo / founder breakdown / comp table / deal card
+- each card shows company, type, verdict, timestamp, teammate avatar circles
+- click to expand full artifact
+- new artifacts animate in at top when generated
+- clicking an artifact link from the HUD deep links directly here
+
+**chat with your shadow (right)**
+- freeform prompt bar
+- shadow answers as your clone from your behavioral model
+- example queries:
+  - "what do i actually think about consumer deals"
+  - "why have i been passing on deep tech lately"
+  - "what would i ask this founder on a first call"
+  - "am i being consistent with my thesis"
+  - "compare this to the last deal i got excited about"
+- answers cite specific memory entries they drew from
+
+---
+
+### tab 2: firm brain
+
+organizational view. the collective intelligence of everyone running shadow.
+
+**deal pipeline (main view)**
+- every deal being looked at across the firm
+- each row: company name, who is looking (avatars), individual shadow verdicts, consensus score, last activity
+- click any deal to open firm deal view
+
+**firm deal view (expanded)**
+- your artifact for the deal shown left
+- right panel: every teammate's shadow verdict
+  - their conviction level
+  - top signals their model flagged
+  - click any teammate to open chat with their shadow
+  - ask their shadow questions -- it answers as they would
+- below: firm verdict card
+  - synthesized consensus
+  - strongest signals for and against
+  - historical match from firm memory if exists
+  - recommended next action
+  - generate firm verdict button
+
+**firm query bar**
+wide prompt at top of firm brain tab. query the entire firm's accumulated memory:
+- "has anyone at this firm seen a deal like this before"
+- "what does our firm think about B2B infra right now"
+- "who has the best track record on enterprise SaaS deals"
+- "what did we miss the last time we passed on something like this"
+answers cite which partners, which deals, which memory entries were drawn from.
+
+**firm artifacts**
+all artifacts generated across the firm. filterable by person, type, date. shows which shadow generated it and how many others have reviewed it.
+
+---
+
+## integrations
+
+when any artifact is generated shadow automatically pulls relevant context from connected sources. no manual tagging. no copy paste. it just knows.
+
+**slack**
+- threads mentioning the company or founder
+- partner conversations about the space
+- any decisions or signals shared in channels
+- surfaces inline in artifacts with link back to original thread
+
+**email / gmail**
+- prior outreach to the founder
+- warm intro chains
+- partner correspondence about the deal or space
+
+**notion / google docs**
+- existing research memos
+- market maps
+- prior diligence documents
+- firm thesis documents
+
+**calendar**
+- prior meetings with this founder
+- related company meetings
+- timestamps showing relationship history
+
+**firm deal history**
+- any company in the same space the firm has previously evaluated
+- outcome of those evaluations (passed, invested, missed)
+- which partners looked at them
+
+every artifact shows a "pulled from" section listing exactly which sources were used. clicking any source opens the original.
+
+---
+
+## the behavioral model
+
+everything shadow captures feeds a continuously updating model of how you think as an investor. stored in memory. persists across sessions. compounds over time.
+
+**what it learns:**
+- what founder profiles you trust (technical, repeat founder, operator background)
+- what market dynamics excite vs concern you
+- what red flags you always catch
+- how long you spend on different deal types
+- what you say out loud when skeptical vs excited
+- which suggestion pills you click vs ignore
+- what questions you always ask before an IC
+
+**how it updates:**
+- every screen signal adds weight to relevant preferences
+- every voice signal is parsed for sentiment and subject
+- every click and ignore is logged
+- every correction you make in the memory log is applied immediately
+
+**what it produces:**
+artifacts that sound like you wrote them. memos with your specific concerns. sourcing sheets that dig into the things you care about. verdicts that match your historical patterns.
+
+---
+
+## the firm brain
+
+every individual shadow model combines into one organizational layer.
+
+```
+partner A shadow  +  partner B shadow  +  partner C shadow
+                          ↓
+                     firm brain
+                          ↓
+          collective judgment, queryable forever
+```
+
+when a partner retires their shadow stays. a junior analyst on day one can query 30 years of partner judgment on any deal type. the firm's institutional knowledge stops living in people's heads and starts compounding in a system.
+
+---
+
+## demo flow
+
+**pre-demo setup (tonight):**
+feed shadow a synthetic prior -- 5-6 past memos in your voice, an investment thesis doc, 2-3 sourcing sheets in your style, a voice notes transcript. shadow treats it as real history. demo starts with a model that already knows you.
+
+**act 1: live learning (60 seconds)**
+
+open a real YC company page. browse it naturally. say something out loud deliberately:
+
+> "i always check if the CTO has actually shipped something"
+
+HUD writes to memory live:
+```
+💾 saving: always checks CTO shipping history
+💾 updating: technical founder weight +8%
+```
+
+then deliberately say something wrong:
+
+> "i love consumer social"
+
+shadow writes it. you open memory tab. find it. delete it.
+
+> "wrong. shadow got that one wrong. i can correct it."
+
+shows live learning AND memory editing in 30 seconds.
+
+**act 2: the analyst work (90 seconds)**
+
+drop a pitch deck live on stage. suggestion pills appear. click through:
+
+1. click "generate sourcing sheet" → pre-built sheet loads with slack thread pulled in
+2. click "founder breakdown" → founder card loads
+3. click "generate IC memo" → memo appears in your voice
+
+> "that's four hours of analyst work. ninety seconds."
+
+**act 3: firm brain (60 seconds)**
+
+switch to firm brain tab. click the deal just created. show two teammate avatar circles with different verdicts. click one -- their shadow disagrees, explains why in their voice. hit generate firm verdict -- synthesis card appears.
+
+hit firm query:
+> "has this firm seen a deal like this before"
+
+pre-scripted answer surfaces a historical match.
+
+> "that's the judgment of everyone who has ever worked here. available on every deal. forever."
+
+---
+
+## design direction
+
+- dark theme, near black background (#0a0a0a)
+- clean typography, nothing decorative
+- cards with subtle borders, no heavy shadows
+- single accent color used sparingly for active states
+- verdict colors: green invest / yellow investigate / red pass
+- teammate avatars: small circles, always visible on artifact cards
+- animations: artifacts slide in on generation, memory writes appear line by line, confidence ticks up
+- feels like bloomberg terminal meets linear -- dense but never cluttered
+- no gradients, no illustrations, no generic AI aesthetics
 
 ---
 
