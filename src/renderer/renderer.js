@@ -244,7 +244,17 @@ function pushThought(text) {
   while (thoughtsEl.children.length > 5) thoughtsEl.lastChild.remove();
 }
 if (window.shadow && window.shadow.onThought) {
-  window.shadow.onThought((t) => { if (t) pushThought(t); });
+  window.shadow.onThought((t) => {
+    if (!t) return;
+    if (typeof t === 'string') return pushThought(t);
+    if (t.text) {
+      const li = document.createElement('li');
+      if (t.proactive) li.classList.add('proactive');
+      li.textContent = (t.proactive ? '💭 ' : '') + t.text;
+      thoughtsEl.prepend(li);
+      while (thoughtsEl.children.length > 5) thoughtsEl.lastChild.remove();
+    }
+  });
 }
 
 // ===== WATCHING (real signals only — rows hidden until first real text) =====
@@ -393,7 +403,7 @@ if (window.shadow && window.shadow.onSuggestions) {
   window.shadow.onSuggestions((list) => {
     if (!Array.isArray(list) || list.length === 0) return;
     pillsEl.innerHTML = list
-      .map((s) => `<button data-id="${s.id}"><span>${s.label}</span><span class="arrow">→</span></button>`)
+      .map((s) => `<button data-id="${s.id}"${s.proactive ? ' class="proactive" title="proactive nudge"' : ''}><span>${s.proactive ? '✨ ' : ''}${s.label}</span><span class="arrow">→</span></button>`)
       .join('');
     pillsEl.querySelectorAll('button').forEach((btn) => {
       btn.addEventListener('click', async () => {

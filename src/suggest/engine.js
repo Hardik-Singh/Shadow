@@ -28,7 +28,7 @@ function extractCompany(text) {
   return m ? m[1] : null;
 }
 
-async function pickActions(context) {
+async function pickActions(context, { proactive = false } = {}) {
   const companyHint = extractCompany(context) || 'this company';
   const allActions = registry.list();
   // Probe Hyperspell for past click/ignore patterns per action_id.
@@ -53,6 +53,7 @@ async function pickActions(context) {
     action_id: action.id,
     label: action.label.replace('{company}', companyHint),
     company_hint: companyHint,
+    proactive,
     created_at: Date.now(),
   }));
 }
@@ -77,6 +78,24 @@ async function run() {
     emitSuggestions(suggestions);
   } catch (err) {
     console.warn('[suggest] failed', err && err.message);
+  }
+}
+
+// Cron-driven re-rank, decoupled from memory:write. Runs even when the
+// recent buffer is empty — falls back to the last-known suggestions'
+// company hint so the engine still has something to ground on.
+async function runProactive() {
+  lastRunAt = Date.now();
+  let context = recentText();
+  if (!context) {
+    const last = lastSuggestions[0];
+    context = last && last.company_hint ? last.company_hint : 'idle';
+  }
+  try {
+    const suggestions = await pickActions(context, { proactive: true });
+    emitSuggestions(suggestions);
+  } catch (err) {
+    console.warn('[suggest] proactive failed', err && err.message);
   }
 }
 
@@ -125,4 +144,4 @@ function start() {
 
 function getLastSuggestions() { return lastSuggestions; }
 
-module.exports = { start, clickSuggestion, getLastSuggestions, extractCompany };
+module.exports = { start, clickSuggestion, getLastSuggestions, extractCompany, runProactive };
