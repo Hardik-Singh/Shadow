@@ -258,7 +258,10 @@ if (window.shadow && window.shadow.onThought) {
   window.shadow.onThought((t) => {
     if (!t) return;
     if (typeof t === 'string') pushThought(t);
-    else if (t.text) pushThought(t.text, t.sources);
+    else if (t.text) {
+      pushThought((t.proactive ? '💭 ' : '') + t.text, t.sources);
+      if (t.proactive && thoughtsEl.firstChild) thoughtsEl.firstChild.classList.add('proactive');
+    }
   });
 }
 
@@ -380,7 +383,9 @@ if (window.shadow && window.shadow.onSuggestions) {
     pillsEl.innerHTML = list
       .map((s) => {
         const reason = s.reason ? `<span class="reason">${escapeHtml(s.reason)}</span>` : '';
-        return `<button data-id="${escapeHtml(s.id)}"><span class="pill-text"><span class="pill-label">${escapeHtml(s.label)}</span>${reason}</span><span class="arrow">→</span></button>`;
+        const cls = s.proactive ? ' class="proactive" title="proactive nudge"' : '';
+        const prefix = s.proactive ? '✨ ' : '';
+        return `<button data-id="${escapeHtml(s.id)}"${cls}><span class="pill-text"><span class="pill-label">${prefix}${escapeHtml(s.label)}</span>${reason}</span><span class="arrow">→</span></button>`;
       })
       .join('');
     pillsEl.querySelectorAll('button').forEach((btn) => {

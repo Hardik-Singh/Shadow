@@ -60,4 +60,11 @@ module.exports = {
     dwellRefreshMs: Number(process.env.SHADOW_DWELL_REFRESH_MS || 30000),
     suggestionTtlMs: Number(process.env.SHADOW_SUGGESTION_TTL_MS || 60000),
   },
+  proactive: {
+    enabled: process.env.SHADOW_PROACTIVE_DISABLED ? false : true,
+    suggestionsMs:    Number(process.env.SHADOW_PROACTIVE_SUGGESTIONS_MS    || 90_000),
+    memoryScanMs:     Number(process.env.SHADOW_PROACTIVE_MEMORY_SCAN_MS    || 300_000),
+    profileRefreshMs: Number(process.env.SHADOW_PROACTIVE_PROFILE_MS        || 600_000),
+    jitter: 0.1,
+  },
 };

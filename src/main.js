@@ -41,6 +41,7 @@ if (process.env.HYPERSPELL_API_KEY && process.env.HYPERSPELL_BASE && process.env
     // a silent mirror to the firm vault, not a duplicate UI feed.
     bus.on('suggestions', (list) => send('signal:suggestions', list));
     bus.on('artifact',    (a)    => send('signal:artifact', a));
+    bus.on('thought',     (t)    => send('signal:thought', t));
     console.log('[memory] online — hyperspell-backed firm brain');
   } catch (e) {
     console.error('[memory] init failed', e && e.message);
@@ -417,6 +418,14 @@ app.whenReady().then(async () => {
       registry.register(require('./actions/flag-deal'));
       profile.start();
       suggest.start();
+      try {
+        const config = require('./config');
+        require('./proactive/scheduler').start({
+          suggest, bus, config, profile,
+          MemoryRepo,
+          extractCompany: suggest.extractCompany,
+        });
+      } catch (e) { console.error('[proactive] start', e && e.message); }
     } catch (e) { console.error('[engines] failed to start', e && e.message); }
   }
 
@@ -435,6 +444,7 @@ app.whenReady().then(async () => {
 
 app.on('before-quit', () => {
   try { memory.stop(); } catch {}
+  try { require('./proactive/scheduler').stop(); } catch {}
   if (live) { try { live.close(); } catch {} }
 });
 

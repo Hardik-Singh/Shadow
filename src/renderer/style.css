@@ -349,6 +349,17 @@ body {
   color: rgba(251, 228, 197, 0.55);
   text-transform: none;
 }
+.pills button.proactive {
+  background: rgba(168, 85, 247, 0.10);
+  border: 1px dashed rgba(168, 85, 247, 0.45);
+  color: #ede9fe;
+}
+.pills button.proactive:hover { background: rgba(168, 85, 247, 0.18); }
+.thoughts li.proactive {
+  color: #ddd6fe;
+  border-left: 2px solid rgba(168, 85, 247, 0.55);
+  padding-left: 6px;
+}
 
 /* ARTIFACTS */
 .artifacts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
