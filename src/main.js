@@ -57,7 +57,10 @@ let inFlight = false;
 let userFocus = '';
 let live = null;
 let liveLastFrameAt = 0;
+let liveLastContextAt = 0;
+let paused = false;
 const LIVE_FRAME_INTERVAL_MS = 5000;
+const LIVE_CONTEXT_INTERVAL_MS = 12000;
 
 const HUD_WIDTH = 380;
 const HUD_HEIGHT = 680;
@@ -95,6 +98,7 @@ function send(ch, payload) {
 }
 
 async function captionFrame(b64Jpeg) {
+  if (paused) return;
   const key = process.env.GEMINI_API_KEY;
   if (!key) { send('signal:status', 'GEMINI_API_KEY not set'); return; }
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${VISION_MODEL}:generateContent?key=${encodeURIComponent(key)}`;
@@ -134,11 +138,52 @@ async function captionFrame(b64Jpeg) {
       if (memoryEnabled && MemoryRepo) {
         try { MemoryRepo.create({ kind: 'screen', text }); }
         catch (e) { console.warn('[memory] screen write failed', e && e.message); }
+        // Re-rank suggestions immediately against the new caption, and feed
+        // partner+firm vault context into the live model so its next thought
+        // can reference cross-session history.
+        try { require('./suggest/engine').bumpFromScreen(text); } catch {}
+        injectHyperspellContextToLive(text).catch(() => {});
       }
     }
   } catch (e) {
     console.error('[vision] fetch', e && e.message);
     send('signal:status', 'offline');
+  }
+}
+
+// Pull a small partner+firm Hyperspell summary related to what's on screen
+// and feed it into the Live session as scene-setting (no model turn). Keeps
+// `live thoughts` aware of cross-session history without extra LLM calls.
+let lastInjectedScreen = '';
+let lastContextSource = null;
+async function injectHyperspellContextToLive(screenText) {
+  if (paused) return;
+  if (!live || !live.ready) return;
+  const now = Date.now();
+  if (now - liveLastContextAt < LIVE_CONTEXT_INTERVAL_MS) return;
+  if (screenText === lastInjectedScreen) return;
+  liveLastContextAt = now;
+  lastInjectedScreen = screenText;
+  try {
+    const hs = require('./ingest/hyperspell');
+    const ctx = require('./context');
+    const hits = await hs.search({
+      scope: 'partner', partner: ctx.ME, firm: ctx.FIRM,
+      query: screenText, k: 6, halfLifeHours: 24 * 14,
+      sources: ['vault'],
+    });
+    if (!hits || !hits.length) return;
+    const lines = hits
+      .map((h) => (h.text || '').replace(/\s+/g, ' ').trim())
+      .filter(Boolean)
+      .slice(0, 6)
+      .map((t) => '- ' + t.slice(0, 140));
+    if (!lines.length) return;
+    const block = `Partner + firm memory matching "${screenText.slice(0, 80)}":\n` + lines.join('\n');
+    live.injectSystemContext(block);
+    lastContextSource = { count: hits.length, label: `partner vault · ${hits.length} memories` };
+  } catch (e) {
+    // Hyperspell failure is non-fatal — live thoughts continue without context.
   }
 }
 
@@ -155,7 +200,11 @@ function startLive() {
     memory.noteTranscript(text);
   });
   live.on('model_response', (text) => {
-    send('signal:thought', text);
+    // Attach the most recent Hyperspell context source (if any was injected
+    // within the last ~30s) so the HUD can show provenance chips.
+    const fresh = Date.now() - liveLastContextAt < 30000;
+    const sources = fresh && lastContextSource ? lastContextSource : null;
+    send('signal:thought', sources ? { text, sources } : text);
   });
   live.on('error', (e) => {
     console.error('[live] error', e && e.message);
@@ -222,7 +271,7 @@ ipcMain.handle('shadow:get-sources', async () => {
 });
 
 ipcMain.on('shadow:frame', async (_e, b64Jpeg) => {
-  if (!b64Jpeg) return;
+  if (!b64Jpeg || paused) return;
 
   // Throttled frame to live session for in-context vision.
   const now = Date.now();
@@ -239,15 +288,34 @@ ipcMain.on('shadow:frame', async (_e, b64Jpeg) => {
 });
 
 ipcMain.on('shadow:audio', (_e, b64Pcm) => {
-  if (!b64Pcm || !live || !live.ready) return;
+  if (paused || !b64Pcm || !live || !live.ready) return;
   live.sendAudio(b64Pcm);
+});
+
+ipcMain.on('shadow:set-paused', (_e, next) => {
+  const wasPaused = paused;
+  paused = !!next;
+  if (paused === wasPaused) return;
+  if (paused) {
+    if (memoryEnabled) {
+      try { require('./suggest/engine').pause(); } catch {}
+      try { require('./model/profile').stop(); } catch {}
+    }
+    send('signal:status', 'paused — no LLM calls');
+  } else {
+    if (memoryEnabled) {
+      try { require('./suggest/engine').resume(); } catch {}
+      try { require('./model/profile').start(); } catch {}
+    }
+    send('signal:status', 'connected');
+  }
 });
 
 // Voice transcript from renderer-side webkitSpeechRecognition. Renderer sends
 // finalized utterances; we store as a `voice` memory and the bus + suggest
 // engine + dashboard pick it up from there.
 ipcMain.on('shadow:voice-text', (_e, payload) => {
-  if (!memoryEnabled || !MemoryRepo || !payload) return;
+  if (paused || !memoryEnabled || !MemoryRepo || !payload) return;
   const text = (typeof payload === 'string' ? payload : payload.text || '').trim();
   if (!text) return;
   const confidence = payload && payload.confidence;
@@ -293,6 +361,14 @@ ipcMain.handle('shadow:memory-delete', (_e, { id }) => {
 
 ipcMain.on('shadow:set-focus', (_e, text) => {
   userFocus = (text || '').toString().slice(0, 500);
+});
+
+// Renderer cycles mode label only — backend records it as a focus hint.
+ipcMain.on('shadow:set-mode', (_e, mode) => {
+  if (typeof mode !== 'string' || !mode) return;
+  if (memoryEnabled && MemoryRepo) {
+    try { MemoryRepo.create({ kind: 'mode', text: `mode: ${mode}` }); } catch {}
+  }
 });
 
 ipcMain.on('shadow:ask', (_e, text) => {

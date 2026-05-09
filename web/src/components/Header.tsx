@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { newOptionsByMode, View } from '../mock/data';
+import { Button } from '@/components/ui/button';
+import { Plus, ChevronDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import Logo from './Logo';
 
 type Props = {
   view: View;
@@ -23,45 +27,44 @@ export default function Header({ view, onViewChange, onNew }: Props) {
   }, [open]);
 
   return (
-    <header className="header">
-      <div className="header-inner">
-        <div className="brand">
-          <div className="brand-mark">◈</div>
-          Shadow
+    <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur">
+      <div className="mx-auto flex h-14 max-w-[1440px] items-center gap-4 px-6">
+        <div className="flex items-center gap-2">
+          <Logo />
+          <span className="text-[15px] font-semibold tracking-tight">Shadow</span>
         </div>
 
-        <div className="view-switcher" role="tablist" aria-label="view">
-          <button
-            role="tab"
-            aria-selected={view === 'mine'}
-            className={`view-btn ${view === 'mine' ? 'active' : ''}`}
-            onClick={() => onViewChange('mine')}
-          >
-            My Shadow
-          </button>
-          <button
-            role="tab"
-            aria-selected={view === 'firm'}
-            className={`view-btn ${view === 'firm' ? 'active' : ''}`}
-            onClick={() => onViewChange('firm')}
-          >
-            Firm Brain
-          </button>
-        </div>
+        <nav className="ml-2 flex items-center gap-0.5 rounded-lg bg-secondary p-0.5" role="tablist" aria-label="view">
+          {(['mine', 'firm'] as const).map((v) => (
+            <button
+              key={v}
+              role="tab"
+              aria-selected={view === v}
+              className={cn(
+                'rounded-md px-3 py-1 text-[13px] font-medium text-muted-foreground transition-colors hover:text-foreground',
+                view === v && 'bg-card text-foreground shadow-soft',
+              )}
+              onClick={() => onViewChange(v)}
+            >
+              {v === 'mine' ? 'My Shadow' : 'Firm Brain'}
+            </button>
+          ))}
+        </nav>
 
-        <div className="header-spacer" />
+        <div className="flex-1" />
 
-        <div ref={ref} style={{ position: 'relative' }}>
-          <button className="new-btn" onClick={() => setOpen((o) => !o)}>
-            <span className="plus">+</span> New
-          </button>
+        <div ref={ref} className="relative">
+          <Button variant="default" size="sm" onClick={() => setOpen((o) => !o)}>
+            <Plus className="h-3.5 w-3.5" /> New
+            <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+          </Button>
           {open && (
-            <div className="new-menu" role="menu">
+            <div className="absolute right-0 top-[calc(100%+6px)] z-40 min-w-[200px] overflow-hidden rounded-lg border border-border bg-popover p-1 shadow-pop">
               {NEW_OPTIONS.map((opt) => (
                 <button
                   key={opt}
-                  className="new-menu-item"
                   onClick={() => { onNew(opt); setOpen(false); }}
+                  className="block w-full rounded-md px-3 py-1.5 text-left text-[13px] text-foreground hover:bg-secondary"
                 >
                   {opt}
                 </button>

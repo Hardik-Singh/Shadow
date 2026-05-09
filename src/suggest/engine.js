@@ -13,6 +13,8 @@ const RECENT_KEEP = 30;
 let lastRunAt = 0;
 let pendingTimer = null;
 let lastSuggestions = [];
+let paused = false;
+let lastScreen = '';
 
 function pushRecent(m) {
   recentMems.push(m);
@@ -26,6 +28,15 @@ function recentText() {
 function extractCompany(text) {
   const m = text.match(/\b([A-Z][a-zA-Z0-9]+(?:\s+(?:Inc|Co|Labs|AI|Technologies|Corp))?)\b/);
   return m ? m[1] : null;
+}
+
+// Extract the "specific thing in view" tail from BASE_PROMPT format:
+//   "Document/Context · Specific thing in view"
+// Falls back to the trimmed caption.
+function extractFocus(text) {
+  if (!text) return '';
+  const parts = text.split('·').map((p) => p.trim()).filter(Boolean);
+  return parts[parts.length - 1] || text.slice(0, 80);
 }
 
 async function pickActions(context, { proactive = false } = {}) {
@@ -48,10 +59,13 @@ async function pickActions(context, { proactive = false } = {}) {
     })
   );
   ranked.sort((a, b) => b.score - a.score || Math.random() - 0.5);
+  const focus = extractFocus(lastScreen);
+  const reasonBase = focus ? `because you're on ${focus}` : 'based on recent activity';
   return ranked.slice(0, 3).map(({ action }) => ({
     id: randomUUID(),
     action_id: action.id,
     label: action.label.replace('{company}', companyHint),
+    reason: reasonBase,
     company_hint: companyHint,
     proactive,
     created_at: Date.now(),
@@ -70,6 +84,7 @@ function emitSuggestions(suggestions) {
 }
 
 async function run() {
+  if (paused) return;
   lastRunAt = Date.now();
   const context = recentText();
   if (!context) return;
@@ -85,6 +100,7 @@ async function run() {
 // recent buffer is empty — falls back to the last-known suggestions'
 // company hint so the engine still has something to ground on.
 async function runProactive() {
+  if (paused) return;
   lastRunAt = Date.now();
   let context = recentText();
   if (!context) {
@@ -100,11 +116,24 @@ async function runProactive() {
 }
 
 function schedule() {
+  if (paused) return;
   const since = Date.now() - lastRunAt;
   if (pendingTimer) return;
   const wait = Math.max(0, DEBOUNCE_MS - since);
   pendingTimer = setTimeout(() => { pendingTimer = null; run(); }, wait);
 }
+
+// Called from main.js after each successful Gemini-Flash screen caption.
+// Stores the latest caption (used for the visible reason on each pill) and
+// triggers a fresh re-rank — independent of memory:write debounce timing.
+function bumpFromScreen(text) {
+  if (!text) return;
+  lastScreen = text;
+  schedule();
+}
+
+function pauseEngine()  { paused = true;  if (pendingTimer) { clearTimeout(pendingTimer); pendingTimer = null; } }
+function resumeEngine() { paused = false; schedule(); }
 
 function clickSuggestion(id) {
   const s = lastSuggestions.find((x) => x.id === id);
@@ -144,4 +173,8 @@ function start() {
 
 function getLastSuggestions() { return lastSuggestions; }
 
-module.exports = { start, clickSuggestion, getLastSuggestions, extractCompany, runProactive };
+module.exports = {
+  start, clickSuggestion, getLastSuggestions, extractCompany,
+  bumpFromScreen, pause: pauseEngine, resume: resumeEngine,
+  runProactive,
+};
