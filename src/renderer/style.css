@@ -508,3 +508,30 @@ body {
   border: 1px solid var(--line-hi);
   color: var(--dim);
 }
+
+/* DROP ZONE */
+.drop-zone {
+  position: fixed;
+  inset: 8px;
+  border-radius: 18px;
+  background: rgba(217, 137, 47, 0.10);
+  border: 2px dashed var(--accent);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 99;
+  pointer-events: none;
+  backdrop-filter: blur(4px);
+}
+.drop-zone.active { display: flex; }
+.drop-zone .drop-msg {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: rgba(14, 14, 16, 0.85);
+  padding: 14px 22px;
+  border-radius: 10px;
+  border: 1px solid var(--accent-line);
+}
