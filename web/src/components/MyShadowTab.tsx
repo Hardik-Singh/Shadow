@@ -4,6 +4,7 @@ import MemorySummary from './MemorySummary';
 import BehavioralWeights from './BehavioralWeights';
 import SignalChips from './SignalChips';
 import Actions from './Actions';
+import Integrations from './Integrations';
 import ChatYourShadow from './ChatYourShadow';
 import MyArtifacts from './MyArtifacts';
 import { Separator } from '@/components/ui/separator';
@@ -33,6 +34,7 @@ export default function MyShadowTab({ pending }: Props) {
         <MyArtifacts onOpen={navigate} pending={pending} />
       </div>
       <div className="flex min-w-0 flex-col gap-8">
+        <Integrations />
         <Actions />
       </div>
     </div>
