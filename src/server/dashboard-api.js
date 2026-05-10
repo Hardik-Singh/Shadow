@@ -68,21 +68,24 @@ async function handleRequest(req, res) {
     }
   }
 
-  if (u.pathname.startsWith('/integrations/calendar')) {
-    const cal = require('../integrations/calendar');
-    if (req.method === 'GET' && u.pathname === '/integrations/calendar/status') {
-      return sendJson(res, 200, { connected: cal.oauth.isConnected() });
-    }
-    if (req.method === 'POST' && u.pathname === '/integrations/calendar/connect') {
-      await cal.oauth.completeFakeConsent();
-      return sendJson(res, 200, { connected: true });
-    }
-    if (req.method === 'POST' && u.pathname === '/integrations/calendar/disconnect') {
-      cal.oauth.disconnect();
-      return sendJson(res, 200, { connected: false });
-    }
-    if (req.method === 'GET' && u.pathname === '/integrations/calendar/events') {
-      return sendJson(res, 200, cal.priorMeetings({ founder: u.query.founder, company: u.query.company }));
+  // Firm deal history — past evaluations of similar companies. Consumed by
+  // the firm verdict card's "Historical match" line and by sourcing/IC
+  // actions to populate the "FROM FIRM MEMORY" block.
+  if (req.method === 'GET' && u.pathname === '/firm/history') {
+    try {
+      const fh = require('../ingest/firm-history');
+      if (u.query.dealId) {
+        const match = fh.byDealId(u.query.dealId);
+        return sendJson(res, 200, { dealId: u.query.dealId, match });
+      }
+      const matches = fh.findSimilarDeals({
+        company: u.query.company,
+        sector: u.query.sector,
+        limit: Number(u.query.limit) || 5,
+      });
+      return sendJson(res, 200, { matches });
+    } catch (err) {
+      return sendJson(res, 500, { error: err.message });
     }
   }
 
