@@ -34,8 +34,8 @@ export default function MyShadowTab({ pending }: Props) {
         <MyArtifacts onOpen={navigate} pending={pending} />
       </div>
       <div className="flex min-w-0 flex-col gap-8">
-        <Integrations />
         <Actions />
+        <Integrations />
       </div>
     </div>
   );
