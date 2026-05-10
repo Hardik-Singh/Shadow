@@ -19,6 +19,38 @@ const modeLabel = document.getElementById('mode-label');
 const promptForm = document.getElementById('prompt-form');
 const promptInput = document.getElementById('prompt');
 
+// ===== FILE DROP =====
+// Drag any file onto the HUD; main extracts text + chunks into memory.
+// We render an overlay during dragover and emit a "ingesting…" pill via the
+// artifacts feed so the action is visible.
+const dropEl = document.createElement('div');
+dropEl.className = 'drop-zone';
+dropEl.innerHTML = '<div class="drop-msg">drop to ingest</div>';
+document.body.appendChild(dropEl);
+
+let dragDepth = 0;
+window.addEventListener('dragenter', (e) => {
+  e.preventDefault();
+  dragDepth++;
+  dropEl.classList.add('active');
+});
+window.addEventListener('dragover', (e) => { e.preventDefault(); });
+window.addEventListener('dragleave', () => {
+  dragDepth = Math.max(0, dragDepth - 1);
+  if (dragDepth === 0) dropEl.classList.remove('active');
+});
+window.addEventListener('drop', async (e) => {
+  e.preventDefault();
+  dragDepth = 0;
+  dropEl.classList.remove('active');
+  if (!window.shadow || !window.shadow.ingestFile) return;
+  const files = Array.from(e.dataTransfer ? e.dataTransfer.files : []);
+  for (const f of files) {
+    if (!f.path) continue;
+    window.shadow.ingestFile({ path: f.path, name: f.name });
+  }
+});
+
 // ===== MIC =====
 // Default to muted so other audio tools (Wispr Flow, etc.) keep working.
 // We don't even open the mic stream until the user unmutes, so we don't hold a lock.
