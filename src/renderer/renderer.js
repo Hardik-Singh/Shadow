@@ -221,6 +221,195 @@ modeBtn.addEventListener('click', () => {
 });
 renderModeLabel();
 
+// ===== SHADOW MODE: HELP vs AUTONOMOUS =====
+// Help mode = current behavior (watching, suggesting). Autonomous mode = shadow
+// runs the queue itself; the HUD switches into a status-only view.
+const shadowModeBtn = document.getElementById('shadow-mode');
+const shadowModeLabel = document.getElementById('shadow-mode-label');
+const autoOpenDashboardBtn = document.getElementById('auto-open-dashboard');
+const autoTasksEl = document.getElementById('auto-tasks');
+const autoFootEl = document.getElementById('auto-foot');
+
+const AUTO_TASKS = [
+  {
+    title: 'Triage all inbound',
+    lines: [
+      'pulling 23 unread from gmail…',
+      'scoring against your behavioral model…',
+      'cross-checking firm history in hyperspell…',
+      'flagged 3 for review · 18 pass drafts queued',
+    ],
+  },
+  {
+    title: 'Finish work on Nozomio',
+    lines: [
+      'reopening sourcing sheet from 5:47pm…',
+      'completing comps section · pulling crunchbase…',
+      'drafting team summary from linkedin + github…',
+      'sheet ready for your review',
+    ],
+  },
+  {
+    title: 'Run additional DD on Nozomio',
+    lines: [
+      'querying nia for press, hiring, github activity…',
+      'pulled 4 customer references from your network…',
+      'compared shipping cadence vs comps…',
+      'flagged 2 risks · DD memo drafted',
+    ],
+  },
+];
+
+let autoTimers = [];
+let autoActiveIdx = -1;
+let autoLineIdx = 0;
+
+function clearAutoTimers() {
+  autoTimers.forEach((t) => clearTimeout(t));
+  autoTimers = [];
+}
+
+function renderAutoTasks() {
+  autoTasksEl.innerHTML = '';
+  AUTO_TASKS.forEach((task, i) => {
+    const li = document.createElement('li');
+    let statusClass = 'pending';
+    if (i < autoActiveIdx) statusClass = 'done';
+    else if (i === autoActiveIdx) statusClass = 'running';
+    if (statusClass === 'done') li.classList.add('done');
+    const status = document.createElement('span');
+    status.className = `auto-task-status ${statusClass}`;
+    const body = document.createElement('div');
+    body.className = 'auto-task-body';
+    const title = document.createElement('div');
+    title.className = 'auto-task-title';
+    title.textContent = task.title;
+    body.appendChild(title);
+    if (i === autoActiveIdx) {
+      const line = document.createElement('div');
+      line.className = 'auto-task-line';
+      line.textContent = task.lines[autoLineIdx % task.lines.length];
+      body.appendChild(line);
+    }
+    li.appendChild(status);
+    li.appendChild(body);
+    autoTasksEl.appendChild(li);
+  });
+  if (autoActiveIdx >= AUTO_TASKS.length) {
+    autoFootEl.textContent = 'all 3 tasks complete · queued for your 9am review';
+  } else if (autoActiveIdx < 0) {
+    autoFootEl.textContent = 'idle · click handoff in dashboard to start';
+  } else {
+    autoFootEl.textContent = `running task ${autoActiveIdx + 1} of ${AUTO_TASKS.length} · ${autoActiveIdx} complete`;
+  }
+}
+
+function startAutonomousAnimation() {
+  clearAutoTimers();
+  autoActiveIdx = 0;
+  autoLineIdx = 0;
+  renderAutoTasks();
+
+  // Loop through tasks slowly. ~14s per task, ~4 lines each → ~3.5s per line.
+  // The HUD animation is intentionally a vibe — the real timing is driven by the web app.
+  const LINE_MS = 3500;
+  const TASKS = AUTO_TASKS.length;
+  let elapsed = 0;
+  AUTO_TASKS.forEach((task, ti) => {
+    task.lines.forEach((_, li) => {
+      elapsed += LINE_MS;
+      autoTimers.push(
+        setTimeout(() => {
+          autoActiveIdx = ti;
+          autoLineIdx = li;
+          renderAutoTasks();
+        }, elapsed),
+      );
+    });
+    // gap between tasks: bump active to next; if last, mark all done
+    elapsed += 800;
+    autoTimers.push(
+      setTimeout(() => {
+        autoActiveIdx = ti + 1;
+        autoLineIdx = 0;
+        renderAutoTasks();
+      }, elapsed),
+    );
+  });
+}
+
+function setShadowMode(mode) {
+  const isAuto = mode === 'autonomous';
+  hudEl.classList.toggle('shadow-autonomous', isAuto);
+  shadowModeLabel.textContent = isAuto ? 'autonomous' : 'help';
+  shadowModeBtn.title = isAuto
+    ? 'Autonomous mode — click to return to help'
+    : 'Help mode — click to hand off to autonomous';
+  try { localStorage.setItem('shadow-mode', mode); } catch {}
+  if (isAuto) {
+    startAutonomousAnimation();
+    // Kick off a real orchestrator run if main is wired up. The orchestrator
+    // reads from Hyperspell, runs action handlers, writes artifacts back.
+    // The visual animation above is independent — it runs even if main is not
+    // yet on this build of the renderer.
+    if (window.shadow && window.shadow.startHandoff) {
+      window.shadow.startHandoff({
+        partner_id: 'hardik',
+        firm_user_id: 'firm:nozomio-vc',
+        tasks_enabled: ['preflight', 'sourcing', 'triage', 'nozomio_dd'],
+        approval_required: true,
+        handoff_time: new Date().toISOString(),
+      }).catch((err) => console.warn('[handoff] start failed', err));
+    }
+  } else {
+    clearAutoTimers();
+    autoActiveIdx = -1;
+    renderAutoTasks();
+  }
+}
+
+// Live events from the real orchestrator — overlays the demo animation with
+// real progress (e.g. "preflight:resolved → primary: Nozomio") when main is
+// running with Hyperspell + action registry online.
+if (window.shadow && window.shadow.onHandoffEvent) {
+  window.shadow.onHandoffEvent((ev) => {
+    if (!ev) return;
+    if (ev.kind === 'preflight:resolved' && ev.primary) {
+      autoFootEl.textContent = `preflight: found ${ev.primary.company} (${ev.primary.kind || 'in progress'})`;
+    } else if (ev.kind === 'task:artifact' && ev.artifact) {
+      autoFootEl.textContent = `artifact ready: ${ev.artifact.kind}`;
+    } else if (ev.kind === 'handoff:done') {
+      autoFootEl.textContent = 'all tasks complete · queued for your review';
+    } else if (ev.kind === 'handoff:error') {
+      autoFootEl.textContent = `handoff error: ${ev.error}`;
+    }
+  });
+}
+
+shadowModeBtn.addEventListener('click', () => {
+  const cur = hudEl.classList.contains('shadow-autonomous') ? 'autonomous' : 'help';
+  setShadowMode(cur === 'autonomous' ? 'help' : 'autonomous');
+});
+
+if (autoOpenDashboardBtn) {
+  autoOpenDashboardBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (window.shadow && window.shadow.openInDashboard) {
+      window.shadow.openInDashboard('view=autonomous');
+    }
+  });
+}
+
+// Hydrate initial state
+renderAutoTasks();
+try {
+  const saved = localStorage.getItem('shadow-mode');
+  if (saved === 'autonomous') setShadowMode('autonomous');
+  else setShadowMode('help');
+} catch {
+  setShadowMode('help');
+}
+
 // ===== MEMORY WRITES (driven by main process: distilled signals from SQLite +
 // silent Hyperspell mirror for cross-session firm brain) =====
 function pushWrite(verb, text, opts) {

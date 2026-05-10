@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import Header from './components/Header';
 import MyShadowTab from './components/MyShadowTab';
 import FirmBrainTab from './components/firm/FirmBrainTab';
+import AutonomousTab from './components/autonomous/AutonomousTab';
 import { PartnerChatProvider } from './components/PartnerChat';
 import { Artifact, View, deals, artifacts } from './mock/data';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -18,6 +19,9 @@ function readDeepLink(): { view: View; artifactId: string | null; dealId: string
   }
   if (p.get('view') === 'firm') {
     return { view: 'firm', artifactId: null, dealId: null };
+  }
+  if (p.get('view') === 'autonomous') {
+    return { view: 'autonomous', artifactId: null, dealId: null };
   }
   return { view: 'mine', artifactId: null, dealId: null };
 }
@@ -122,7 +126,7 @@ export default function App() {
     setOpenArtifactId(null);
     const params = new URLSearchParams(window.location.search);
     params.set('view', v);
-    if (v === 'mine') { params.delete('section'); params.delete('deal'); }
+    if (v !== 'firm') { params.delete('section'); params.delete('deal'); }
     window.history.replaceState({}, '', `?${params.toString()}`);
   };
 
@@ -131,15 +135,15 @@ export default function App() {
       <PartnerChatProvider>
         <div className="min-h-screen bg-background">
           <Header view={view} onViewChange={onChangeView} onNew={handleNew} />
-          {view === 'mine' ? (
+          {view === 'mine' && (
             <MyShadowTab
               onOpenInFirm={onOpenInFirm}
               initialArtifactId={openArtifactId}
               pending={pending}
             />
-          ) : (
-            <FirmBrainTab focusedDealId={focusedDealId} />
           )}
+          {view === 'firm' && <FirmBrainTab focusedDealId={focusedDealId} />}
+          {view === 'autonomous' && <AutonomousTab />}
         </div>
       </PartnerChatProvider>
     </TooltipProvider>

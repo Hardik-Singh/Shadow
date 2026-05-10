@@ -1,5 +1,5 @@
 export type Mode = 'VC' | 'Hedge Fund' | 'PE' | 'IB';
-export type View = 'mine' | 'firm';
+export type View = 'mine' | 'firm' | 'autonomous';
 export type Verdict = 'invest' | 'investigate' | 'pass';
 export type SourceKind = 'slack' | 'email' | 'notion' | 'calendar' | 'prior';
 

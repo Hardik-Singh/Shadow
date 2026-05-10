@@ -29,4 +29,8 @@ contextBridge.exposeInMainWorld('shadow', {
   listMemories:    ()         => ipcRenderer.invoke('shadow:memory-list'),
   editMemory:      (id, text) => ipcRenderer.invoke('shadow:memory-edit',   { id, text }),
   deleteMemory:    (id)       => ipcRenderer.invoke('shadow:memory-delete', { id }),
+
+  // ─── Autonomous handoff ──────────────────────────────────────────
+  startHandoff:    (ctx)      => ipcRenderer.invoke('shadow:start-handoff', ctx || {}),
+  onHandoffEvent:  (cb)       => ipcRenderer.on('signal:handoff', (_e, ev) => cb(ev)),
 });

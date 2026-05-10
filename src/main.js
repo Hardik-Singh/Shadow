@@ -39,9 +39,10 @@ if (process.env.HYPERSPELL_API_KEY && process.env.HYPERSPELL_BASE && process.env
     // We only forward suggestions + artifacts — the things the local memory
     // module doesn't compute. Hyperspell-backed memory writes themselves are
     // a silent mirror to the firm vault, not a duplicate UI feed.
-    bus.on('suggestions', (list) => send('signal:suggestions', list));
-    bus.on('artifact',    (a)    => send('signal:artifact', a));
-    bus.on('thought',     (t)    => send('signal:thought', t));
+    bus.on('suggestions',    (list) => send('signal:suggestions', list));
+    bus.on('artifact',       (a)    => send('signal:artifact', a));
+    bus.on('thought',        (t)    => send('signal:thought', t));
+    bus.on('handoff:event',  (ev)   => send('signal:handoff', ev));
     console.log('[memory] online — hyperspell-backed firm brain');
   } catch (e) {
     console.error('[memory] init failed', e && e.message);
@@ -341,6 +342,31 @@ ipcMain.handle('shadow:click-suggestion', async (_e, { id }) => {
     return { ok: true, kind: result.kind };
   } catch (err) {
     console.warn('[suggest] action failed', err && err.message);
+    return { error: err.message };
+  }
+});
+
+// ── Autonomous handoff ─────────────────────────────────────────────
+// HUD's autonomous-mode toggle (or a future web button) hits this. The
+// orchestrator reads from Hyperspell, runs action handlers, and emits
+// progress events through the bus. Caller subscribes to `bus.handoff:event`
+// (forwarded to the renderer as `signal:handoff`) to get the live stream.
+ipcMain.handle('shadow:start-handoff', async (_e, handoffContext) => {
+  if (!memoryEnabled) return { error: 'memory layer not enabled' };
+  try {
+    const { runHandoff } = require('./orchestrator/handoff');
+    // Fire-and-forget so the HUD doesn't sit on the IPC; events stream via bus.
+    runHandoff(handoffContext || {}, {
+      onEvent: (event) => {
+        bus.emit('handoff:event', event);
+      },
+    }).catch((err) => {
+      console.warn('[handoff] failed', err && err.message);
+      bus.emit('handoff:event', { kind: 'handoff:error', error: err.message });
+    });
+    return { ok: true };
+  } catch (err) {
+    console.warn('[handoff] could not start', err && err.message);
     return { error: err.message };
   }
 });
