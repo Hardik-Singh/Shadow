@@ -225,6 +225,8 @@ renderModeLabel();
 // silent Hyperspell mirror for cross-session firm brain) =====
 function pushWrite(verb, text, opts) {
   if (!writesEl) return;
+  const empty = writesEl.querySelector('.empty');
+  if (empty) empty.remove();
   const li = document.createElement('li');
   if (opts && opts.historical) li.classList.add('historical');
   li.innerHTML = `<span class="verb">${verb}:</span>${text}`;
