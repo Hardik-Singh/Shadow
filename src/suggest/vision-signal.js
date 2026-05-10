@@ -10,7 +10,7 @@ const DOC_TYPES = [
   'code', 'browser', 'chat', 'calendar', 'other',
 ];
 const INTENTS = ['evaluate', 'source', 'research', 'write', 'communicate', 'decide', 'browse'];
-const NOZOMIO_DEMO_KEYWORDS = ['arlan', 'linkedin', 'nozomio', 'rakhmetzhanov', 'deck', '.pdf', 'slide'];
+const NOZOMIO_DEMO_KEYWORDS = ['arlan', 'linkedin', 'nozomio', 'rakhmetzhanov', 'deck', '.pdf', 'slide', 'series f', 'series-f', 'seriesf', 'pitch'];
 const DEMO_THOUGHTS = [
   {
     id: 'profile',

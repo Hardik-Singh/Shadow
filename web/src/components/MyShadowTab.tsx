@@ -4,6 +4,7 @@ import { useArtifacts } from '../lib/use-artifacts';
 import MemorySummary from './MemorySummary';
 import SignalChips from './SignalChips';
 import ShadowUpdates from './ShadowUpdates';
+import Actions from './Actions';
 import ChatYourShadow from './ChatYourShadow';
 import MyArtifacts from './MyArtifacts';
 import ArtifactDetail from './ArtifactDetail';
@@ -41,6 +42,7 @@ export default function MyShadowTab({ onOpenInFirm, initialArtifactId, pending }
         <MyArtifacts onOpen={setOpen} pending={pending} />
       </div>
       <div className="flex min-w-0 flex-col gap-8">
+        <Actions />
         <ShadowUpdates />
       </div>
 

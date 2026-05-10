@@ -404,10 +404,11 @@ const demoNozomioState = {
   awaitingDeckReaction: false,
 };
 
+const _slugFor = (id, type) => (window.nozomioArtifactSlug ? window.nozomioArtifactSlug(id, type) : `${id}-${type}`);
 const NOZOMIO_DECK_SUGGESTIONS = [
-  { id: 'nozomio-memo', label: 'ic memo', artifactId: 'n7', name: 'Nozomio · ic memo', route: '/firm/nozomio', delayMs: 2200 },
-  { id: 'nozomio-meeting-prep', label: 'meeting prep doc', artifactId: 'n10', name: 'Nozomio · meeting prep doc', route: '/firm/nozomio', delayMs: 1800 },
-  { id: 'nozomio-email', label: 'pass / follow-up email', artifactId: 'n8', name: 'Nozomio · pass email', route: '/firm/nozomio', delayMs: 120 },
+  { id: 'nozomio-memo', label: 'ic memo', artifactId: 'n7', name: 'Nozomio · ic memo', route: '/artifact/' + _slugFor('n7', 'Investment Memo'), delayMs: 2200 },
+  { id: 'nozomio-meeting-prep', label: 'meeting prep doc', artifactId: 'n10', name: 'Nozomio · meeting prep doc', route: '/artifact/' + _slugFor('n10', 'Meeting Prep'), delayMs: 1800 },
+  { id: 'nozomio-email', label: 'pass / follow-up email', artifactId: 'n8', name: 'Nozomio · pass email', route: '/artifact/' + _slugFor('n8', 'Pass Email'), delayMs: 120 },
 ];
 
 function clearDemoTimers() {
@@ -423,7 +424,7 @@ function addDemoArtifact({ artifactId, name, tag, route }) {
 
 function renderDemoPills(suggestions) {
   pillsEl.innerHTML = suggestions
-    .map((s) => `<button data-demo-id="${escapeHtml(s.id)}"><span class="pill-text"><span class="pill-label">${escapeHtml(s.label)}</span><span class="reason">demo artifact</span></span><span class="arrow">→</span></button>`)
+    .map((s) => `<button data-demo-id="${escapeHtml(s.id)}"><span class="pill-text"><span class="pill-label">${escapeHtml(s.label)}</span></span><span class="arrow">→</span></button>`)
     .join('');
 
   pillsEl.querySelectorAll('button[data-demo-id]').forEach((btn) => {
@@ -465,7 +466,7 @@ function applyNozomioDemoEvent(ev) {
   }
   if (ev.action === 'chat' || ev.action === 'thought') pushThought(ev.text);
   if (ev.action === 'awaitDeckReaction') demoNozomioState.awaitingDeckReaction = true;
-  if (ev.action === 'write') pushWrite(ev.verb || 'demo', ev.text);
+  if (ev.action === 'write') pushWrite(ev.verb || 'note', ev.text);
   if (ev.action === 'artifact') addDemoArtifact({
     artifactId: ev.id,
     name: ev.name,
@@ -481,7 +482,7 @@ function startNozomioDemoStage(stage) {
   if (!Array.isArray(events) || demoNozomioState.firedStages.has(stage)) return;
   demoNozomioState.firedStages.add(stage);
   clearDemoTimers();
-  signalEl.textContent = `nozomio demo · stage ${stage}`;
+  signalEl.textContent = `watching nozomio · ${stage === 1 ? 'linkedin' : 'deck'}`;
   events.forEach((ev) => {
     const t = setTimeout(() => applyNozomioDemoEvent(ev), ev.atMs || 0);
     demoNozomioState.timers.push(t);
