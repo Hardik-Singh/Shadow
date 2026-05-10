@@ -515,6 +515,7 @@ app.whenReady().then(async () => {
       registry.register(require('./actions/sourcing-sheet'));
       registry.register(require('./actions/founder-lookup'));
       registry.register(require('./actions/market-check'));
+      registry.register(require('./actions/comp-table'));
       registry.register(require('./actions/flag-deal'));
       profile.start();
       suggest.start();

@@ -151,6 +151,8 @@ const KIND_LABEL = {
   sourcing_sheet: 'Sourcing Sheet',
   founder_profile: 'Founder Background',
   market_check: 'Market Check',
+  comp_table: 'Comp Table',
+  deal_card: 'Deal Card',
 };
 
 function appendCitationsSection(html, citations, used) {
