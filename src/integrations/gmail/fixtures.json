@@ -1,0 +1,28 @@
+{
+  "threads": [
+    {
+      "id": "G0001",
+      "subject": "intro: James Chen <> Shadow",
+      "ts": "2026-04-08T15:32:00Z",
+      "participants": ["james@acme.inc", "ari@vc-firm.com", "hardik@vc-firm.com"],
+      "snippet": "Ari, thanks for the warm intro. Hardik — happy to chat next week. Attaching deck + caption deck.",
+      "permalink": "https://mail.google.com/mail/u/0/#inbox/G0001"
+    },
+    {
+      "id": "G0002",
+      "subject": "diligence ping — Helix Compute",
+      "ts": "2026-04-19T20:11:00Z",
+      "participants": ["sasha@vc-firm.com", "hardik@vc-firm.com"],
+      "snippet": "I dug into the OSS contributions and the github history holds up. Forwarding two refs from ex-DeepMind.",
+      "permalink": "https://mail.google.com/mail/u/0/#inbox/G0002"
+    },
+    {
+      "id": "G0003",
+      "subject": "re: nozomio — paying for PG + Wolf?",
+      "ts": "2026-05-02T14:47:00Z",
+      "participants": ["lara@vc-firm.com", "marcus@vc-firm.com", "hardik@vc-firm.com"],
+      "snippet": "Round size doesn't reconcile with traction. We're paying for the cap table, not the company.",
+      "permalink": "https://mail.google.com/mail/u/0/#inbox/G0003"
+    }
+  ]
+}
