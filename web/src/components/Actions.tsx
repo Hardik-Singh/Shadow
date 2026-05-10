@@ -1,86 +1,182 @@
-import { firmInboundActions } from '../mock/data';
-import { useArtifacts } from '../lib/use-artifacts';
-import { slugForArtifact } from '../lib/artifacts-api';
+import { useState } from 'react';
+import { shadowUpdates as INITIAL, ShadowUpdate } from '../mock/data';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Activity, ArrowUpRight, Briefcase, Mail, Sparkles } from 'lucide-react';
+import { Check, X, ChevronRight, Wand2, Activity } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-type ActionItem = {
-  id: string;
-  kind: 'inbound-pitch' | 'founder-raised' | 'portfolio-signal';
-  title: string;
-  subtitle: string;
-  artifactId?: string;
-  reason: string;
-};
+export default function ShadowUpdates() {
+  const [updates, setUpdates] = useState<ShadowUpdate[]>(INITIAL);
+  const [expanded, setExpanded] = useState<string | null>(null);
 
-function navigateToSlug(slug: string) {
-  window.history.pushState({}, '', `/artifact/${slug}`);
-  window.dispatchEvent(new PopStateEvent('popstate'));
-}
+  const applied = updates.filter((u) => u.kind === 'applied');
+  const suggestions = updates.filter((u) => u.kind === 'suggestion');
 
-const GROUPS: { kind: ActionItem['kind']; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { kind: 'inbound-pitch',     label: "inbound pitches you'd want first call",     icon: Mail },
-  { kind: 'founder-raised',    label: "founders you've previously met just raised", icon: Sparkles },
-  { kind: 'portfolio-signal',  label: 'portfolio company signal',                   icon: Briefcase },
-];
+  const accept = (id: string) =>
+    setUpdates((all) =>
+      all.map((u) =>
+        u.id === id
+          ? { ...u, kind: 'applied', summary: u.summary.replace(/\?$/, ''), createdAt: 'just now' }
+          : u,
+      ),
+    );
 
-export default function Actions() {
-  const all = useArtifacts();
-  const items = (firmInboundActions as ActionItem[]) ?? [];
+  const dismiss = (id: string) => setUpdates((all) => all.filter((u) => u.id !== id));
 
   return (
     <aside className="flex flex-col gap-5">
       <header>
         <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
           <Activity className="h-3.5 w-3.5 text-accent" />
-          actions
+          Shadow is updating
         </div>
         <p className="mt-1.5 text-[13px] text-muted-foreground">
-          things shadow thinks deserve a first look.
+          What Shadow has changed about its read of you, and what it wants to change next.
         </p>
       </header>
 
-      {GROUPS.map(({ kind, label, icon: Icon }) => {
-        const group = items.filter((i) => i.kind === kind);
-        if (group.length === 0) return null;
-        return (
-          <section key={kind}>
-            <div className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-foreground/70">
-              <Icon className="h-3.5 w-3.5 text-accent" />
-              {label}
-            </div>
-            <div className="flex flex-col gap-2">
-              {group.map((it) => {
-                const target = it.artifactId ? all.find((a) => a.id === it.artifactId) : null;
-                const slug = target ? slugForArtifact(target) : null;
-                const inner = (
-                  <>
-                    <div className="flex items-start gap-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="text-[13.5px] font-medium leading-snug text-foreground">{it.title}</div>
-                        <div className="mt-0.5 text-[12px] text-muted-foreground">{it.subtitle}</div>
-                      </div>
-                      {slug && <ArrowUpRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
-                    </div>
-                    <div className="mt-1.5 text-[11.5px] leading-snug text-muted-foreground/80">{it.reason}</div>
-                  </>
-                );
-                const cls = 'block p-3.5 text-left transition-colors hover:border-foreground/20 hover:bg-secondary/40';
-                if (slug) {
-                  return (
-                    <Card key={it.id} className="overflow-hidden">
-                      <a href={`/artifact/${slug}`} onClick={(e) => { e.preventDefault(); navigateToSlug(slug); }} className={cls}>
-                        {inner}
-                      </a>
-                    </Card>
-                  );
-                }
-                return <Card key={it.id} className={cls}>{inner}</Card>;
-              })}
-            </div>
-          </section>
-        );
-      })}
+      {/* Suggestions */}
+      <section>
+        <div className="mb-2 flex items-center justify-between">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-foreground/70">
+            Suggestions
+          </div>
+          <span className="rounded-full bg-accent/[0.08] px-2 py-0.5 text-[10.5px] font-medium text-accent">
+            {suggestions.length} pending
+          </span>
+        </div>
+        <div className="flex flex-col gap-2.5">
+          {suggestions.length === 0 && (
+            <Card className="p-4 text-[13px] text-muted-foreground">
+              No new suggestions. Shadow is watching.
+            </Card>
+          )}
+          {suggestions.map((u) => (
+            <SuggestionCard
+              key={u.id}
+              update={u}
+              expanded={expanded === u.id}
+              onToggle={() => setExpanded((x) => (x === u.id ? null : u.id))}
+              onAccept={() => accept(u.id)}
+              onDismiss={() => dismiss(u.id)}
+            />
+          ))}
+        </div>
+      </section>
+
+      {/* Applied */}
+      <section>
+        <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-foreground/70">
+          Recent updates
+        </div>
+        <div className="flex flex-col gap-2">
+          {applied.map((u) => (
+            <AppliedRow
+              key={u.id}
+              update={u}
+              expanded={expanded === u.id}
+              onToggle={() => setExpanded((x) => (x === u.id ? null : u.id))}
+            />
+          ))}
+        </div>
+      </section>
     </aside>
+  );
+}
+
+function SuggestionCard({
+  update,
+  expanded,
+  onToggle,
+  onAccept,
+  onDismiss,
+}: {
+  update: ShadowUpdate;
+  expanded: boolean;
+  onToggle: () => void;
+  onAccept: () => void;
+  onDismiss: () => void;
+}) {
+  return (
+    <Card className="overflow-hidden border-accent/30 bg-accent/[0.04]">
+      <button onClick={onToggle} className="flex w-full items-start gap-3 p-3.5 text-left">
+        <Wand2 className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+        <div className="flex-1">
+          <div className="text-[13.5px] font-medium leading-snug text-foreground">
+            {update.summary}
+          </div>
+          <div className="mt-1 text-[11.5px] text-muted-foreground">{update.createdAt}</div>
+        </div>
+        <ChevronRight
+          className={cn(
+            'mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform',
+            expanded && 'rotate-90',
+          )}
+        />
+      </button>
+      {expanded && (
+        <div className="border-t border-accent/20 bg-card/60 px-4 py-3">
+          <p className="text-[13px] leading-relaxed text-foreground/80">{update.rationale}</p>
+          {update.diff && (
+            <div className="mt-2.5 inline-flex items-center gap-2 rounded-md bg-secondary px-2 py-1 font-mono text-[11.5px]">
+              <span className="text-muted-foreground line-through">{update.diff.before}</span>
+              <span>→</span>
+              <span className="text-accent">{update.diff.after}</span>
+            </div>
+          )}
+        </div>
+      )}
+      <div className="flex items-center gap-2 border-t border-accent/20 bg-card/60 px-3.5 py-2.5">
+        <Button size="xs" variant="default" onClick={onAccept}>
+          <Check className="h-3 w-3" /> Accept
+        </Button>
+        <Button size="xs" variant="outline" onClick={onToggle}>
+          {expanded ? 'Hide' : 'Why?'}
+        </Button>
+        <Button size="xs" variant="ghost" onClick={onDismiss} className="ml-auto text-muted-foreground">
+          <X className="h-3 w-3" /> Dismiss
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
+function AppliedRow({
+  update,
+  expanded,
+  onToggle,
+}: {
+  update: ShadowUpdate;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <div className="rounded-lg border border-border bg-card">
+      <button onClick={onToggle} className="flex w-full items-start gap-3 p-3 text-left">
+        <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" />
+        <div className="flex-1 min-w-0">
+          <div className="text-[13px] leading-snug text-foreground">{update.summary}</div>
+          <div className="mt-0.5 text-[11px] text-muted-foreground">{update.createdAt}</div>
+        </div>
+        <ChevronRight
+          className={cn(
+            'mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform',
+            expanded && 'rotate-90',
+          )}
+        />
+      </button>
+      {expanded && (
+        <div className="border-t border-border px-3.5 py-2.5">
+          <p className="text-[12.5px] leading-relaxed text-muted-foreground">{update.rationale}</p>
+          {update.diff && (
+            <div className="mt-2 inline-flex items-center gap-2 rounded-md bg-secondary px-2 py-0.5 font-mono text-[11px]">
+              <span className="text-muted-foreground line-through">{update.diff.before}</span>
+              <span>→</span>
+              <span className="text-foreground">{update.diff.after}</span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

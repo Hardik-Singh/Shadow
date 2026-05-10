@@ -68,15 +68,10 @@ async function handleRequest(req, res) {
     }
   }
 
-  if (req.method === 'POST' && u.pathname === '/firm/verdict') {
-    let body;
-    try { body = await readJsonBody(req); }
-    catch (err) { return sendJson(res, 400, { error: `bad body: ${err.message}` }); }
+  if (req.method === 'GET' && u.pathname === '/profile/weights') {
     try {
-      const dealId = body && body.dealId;
-      if (!dealId) return sendJson(res, 400, { error: 'dealId is required' });
-      const verdict = await FirmVerdicts.synthesize(dealId);
-      return sendJson(res, 200, { dealId, verdict });
+      const ProfileWeights = require('../repos/profile-weights');
+      return sendJson(res, 200, ProfileWeights.weights());
     } catch (err) {
       return sendJson(res, 500, { error: err.message });
     }

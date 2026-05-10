@@ -1,6 +1,7 @@
 import { Artifact } from '../mock/data';
 import { slugForArtifact } from '../lib/artifacts-api';
 import MemorySummary from './MemorySummary';
+import BehavioralWeights from './BehavioralWeights';
 import SignalChips from './SignalChips';
 import Actions from './Actions';
 import ChatYourShadow from './ChatYourShadow';
@@ -24,6 +25,7 @@ export default function MyShadowTab({ pending }: Props) {
     <div className="mx-auto grid max-w-[1280px] gap-x-12 gap-y-12 px-6 py-10 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
       <div className="flex min-w-0 flex-col gap-10">
         <MemorySummary />
+        <BehavioralWeights />
         <SignalChips />
         <Separator />
         <ChatYourShadow />
