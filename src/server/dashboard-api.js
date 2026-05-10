@@ -68,32 +68,22 @@ async function handleRequest(req, res) {
     }
   }
 
-  if (req.method === 'GET' && u.pathname === '/profile/weights') {
-    try {
-      const ProfileWeights = require('../repos/profile-weights');
-      return sendJson(res, 200, ProfileWeights.weights());
-    } catch (err) {
-      return sendJson(res, 500, { error: err.message });
+  // Gmail integration scaffold — fake OAuth + fixture-backed thread search.
+  if (u.pathname.startsWith('/integrations/gmail')) {
+    const gmail = require('../integrations/gmail');
+    if (req.method === 'GET' && u.pathname === '/integrations/gmail/status') {
+      return sendJson(res, 200, { connected: gmail.oauth.isConnected() });
     }
-  }
-
-  // Integration scaffolds — fake OAuth + fixture-backed read endpoints
-  // so the dashboard can show "Connected" + sample threads/messages.
-  if (u.pathname.startsWith('/integrations/slack')) {
-    const slack = require('../integrations/slack');
-    if (req.method === 'GET' && u.pathname === '/integrations/slack/status') {
-      return sendJson(res, 200, { connected: slack.oauth.isConnected() });
-    }
-    if (req.method === 'POST' && u.pathname === '/integrations/slack/connect') {
-      await slack.oauth.completeFakeConsent();
+    if (req.method === 'POST' && u.pathname === '/integrations/gmail/connect') {
+      await gmail.oauth.completeFakeConsent();
       return sendJson(res, 200, { connected: true });
     }
-    if (req.method === 'POST' && u.pathname === '/integrations/slack/disconnect') {
-      slack.oauth.disconnect();
+    if (req.method === 'POST' && u.pathname === '/integrations/gmail/disconnect') {
+      gmail.oauth.disconnect();
       return sendJson(res, 200, { connected: false });
     }
-    if (req.method === 'GET' && u.pathname === '/integrations/slack/threads') {
-      return sendJson(res, 200, slack.searchThreads({ query: u.query.q || '' }));
+    if (req.method === 'GET' && u.pathname === '/integrations/gmail/threads') {
+      return sendJson(res, 200, gmail.searchThreads({ query: u.query.q || '' }));
     }
   }
 
