@@ -557,6 +557,7 @@ if (window.shadow && window.shadow.onArtifact) {
       sourcing_sheet: 'Sourcing sheet',
       founder_profile: 'Founder profile',
       market_check: 'Market check',
+      comp_table: 'Comp table',
       flag: 'Flagged',
     };
     const artifactId = a.data && a.data.artifactId;
