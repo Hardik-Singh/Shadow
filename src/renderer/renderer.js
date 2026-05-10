@@ -14,8 +14,6 @@ const writesEl = document.getElementById('writes');
 const thoughtsEl = document.getElementById('thoughts');
 const pillsEl = document.getElementById('pills');
 const artifactsEl = document.getElementById('artifacts');
-const modeBtn = document.getElementById('mode');
-const modeLabel = document.getElementById('mode-label');
 const promptForm = document.getElementById('prompt-form');
 const promptInput = document.getElementById('prompt');
 
@@ -198,28 +196,10 @@ function fmtSession(ms) {
 }
 setInterval(() => { sessionEl.textContent = fmtSession(Date.now() - sessionStart); }, 1000);
 
-// ===== MODES =====
-// Mode is just a label/context hint forwarded to main. Suggestions and
-// artifacts come from the backend (suggest engine + action handlers); no
-// hardcoded per-mode defaults live in the renderer.
-const MODES = ['VC', 'HF', 'PE', 'IB'];
-let modeIdx = 0;
-
-function renderModeLabel() {
-  modeLabel.textContent = MODES[modeIdx];
-}
-
 function renderEmptySuggestions() {
   pillsEl.innerHTML = '<div class="pills-empty">listening for context…</div>';
 }
 renderEmptySuggestions();
-
-modeBtn.addEventListener('click', () => {
-  modeIdx = (modeIdx + 1) % MODES.length;
-  renderModeLabel();
-  if (window.shadow && window.shadow.setMode) window.shadow.setMode(MODES[modeIdx]);
-});
-renderModeLabel();
 
 // ===== MEMORY WRITES (driven by main process: distilled signals from SQLite +
 // silent Hyperspell mirror for cross-session firm brain) =====
