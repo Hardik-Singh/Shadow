@@ -77,6 +77,26 @@ async function handleRequest(req, res) {
     }
   }
 
+  // Integration scaffolds — fake OAuth + fixture-backed read endpoints
+  // so the dashboard can show "Connected" + sample threads/messages.
+  if (u.pathname.startsWith('/integrations/slack')) {
+    const slack = require('../integrations/slack');
+    if (req.method === 'GET' && u.pathname === '/integrations/slack/status') {
+      return sendJson(res, 200, { connected: slack.oauth.isConnected() });
+    }
+    if (req.method === 'POST' && u.pathname === '/integrations/slack/connect') {
+      await slack.oauth.completeFakeConsent();
+      return sendJson(res, 200, { connected: true });
+    }
+    if (req.method === 'POST' && u.pathname === '/integrations/slack/disconnect') {
+      slack.oauth.disconnect();
+      return sendJson(res, 200, { connected: false });
+    }
+    if (req.method === 'GET' && u.pathname === '/integrations/slack/threads') {
+      return sendJson(res, 200, slack.searchThreads({ query: u.query.q || '' }));
+    }
+  }
+
   if (req.method === 'POST' && u.pathname === '/demo/actions') {
     let body;
     try { body = await readJsonBody(req); }

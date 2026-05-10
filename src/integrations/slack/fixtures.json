@@ -1,0 +1,39 @@
+{
+  "threads": [
+    {
+      "id": "T0001",
+      "channel": "#deals",
+      "permalink": "https://shadow-firm.slack.com/archives/C01/p1701234567",
+      "ts": "2026-04-22T18:14:00Z",
+      "author": "Sasha Kim",
+      "text": "looked at acme inc this morning — the b2b infra angle is interesting but the burn is high for pre-revenue. what do we think?",
+      "replies": [
+        {
+          "author": "Marcus Tao",
+          "text": "i passed on three of these in 2024 — same shape, same TAM claims. unless the CTO is shipping something concrete it's a no for me."
+        },
+        {
+          "author": "Hardik Singh",
+          "text": "team is the thesis here. ex-stripe CTO, 4y eng lead, github says he's been shipping. pulling a sourcing sheet now."
+        }
+      ]
+    },
+    {
+      "id": "T0002",
+      "channel": "#sourcing",
+      "permalink": "https://shadow-firm.slack.com/archives/C02/p1702345678",
+      "ts": "2026-04-15T22:02:00Z",
+      "author": "Jen Park",
+      "text": "fyi anyone tracking distributed inference runtimes — saw helix compute pop up at the YC dinner. founder is ex-DeepMind, OSS history is long.",
+      "replies": []
+    },
+    {
+      "id": "T0003",
+      "channel": "#nozomio",
+      "permalink": "https://shadow-firm.slack.com/archives/C03/p1703456789",
+      "ts": "2026-05-02T09:48:00Z",
+      "author": "Lara Reyes",
+      "text": "round is hot at the top of firm range. paying for PG + Wolf, not the company. solo founder concern."
+    }
+  ]
+}
