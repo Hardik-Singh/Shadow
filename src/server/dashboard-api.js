@@ -5,6 +5,7 @@
 const http = require('http');
 const url = require('url');
 const Artifacts = require('../repos/artifacts');
+const FirmVerdicts = require('../repos/firm-verdicts');
 const { chat } = require('./chat');
 const { createDemoArtifact } = require('./demo-actions');
 const ctx = require('../context');
@@ -62,6 +63,20 @@ async function handleRequest(req, res) {
     try {
       const out = await chat(body || {});
       return sendJson(res, 200, out);
+    } catch (err) {
+      return sendJson(res, 500, { error: err.message });
+    }
+  }
+
+  if (req.method === 'POST' && u.pathname === '/firm/verdict') {
+    let body;
+    try { body = await readJsonBody(req); }
+    catch (err) { return sendJson(res, 400, { error: `bad body: ${err.message}` }); }
+    try {
+      const dealId = body && body.dealId;
+      if (!dealId) return sendJson(res, 400, { error: 'dealId is required' });
+      const verdict = await FirmVerdicts.synthesize(dealId);
+      return sendJson(res, 200, { dealId, verdict });
     } catch (err) {
       return sendJson(res, 500, { error: err.message });
     }
