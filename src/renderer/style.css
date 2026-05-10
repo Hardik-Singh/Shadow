@@ -241,7 +241,12 @@ body {
   border-radius: 0;
   animation: slideIn 280ms ease-out;
 }
-.feed li:first-child { color: rgba(235, 238, 240, 0.95); }
+.feed li.empty {
+  font-style: italic;
+  opacity: 0.4;
+  animation: none;
+}
+.feed li:first-child:not(.empty) { color: rgba(235, 238, 240, 0.95); }
 .feed li:nth-child(n+3) { opacity: 0.65; }
 .feed li:nth-child(n+5) { opacity: 0.4; }
 .feed li .verb {
