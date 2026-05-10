@@ -1,0 +1,32 @@
+{
+  "docs": [
+    {
+      "id": "D0001",
+      "provider": "notion",
+      "title": "B2B Infra thesis · 2026 update",
+      "url": "https://notion.so/firm/b2b-infra-thesis-2026",
+      "snippet": "Three patterns we want to back this year: (1) inference distribution at the edge, (2) developer-led GTM, (3) memory layer for agents. Pass on commodity wrappers."
+    },
+    {
+      "id": "D0002",
+      "provider": "notion",
+      "title": "Founder profile checklist",
+      "url": "https://notion.so/firm/founder-checklist",
+      "snippet": "What we look for: (a) 4+ years shipping in the space, (b) public OSS or product evidence, (c) co-founder relationship pre-existing the company."
+    },
+    {
+      "id": "D0003",
+      "provider": "gdocs",
+      "title": "Acme Inc — diligence notes",
+      "url": "https://docs.google.com/document/d/acme-diligence",
+      "snippet": "Series A · $8M ask · 8 employees · CTO ex-Stripe. Open questions: enterprise GTM motion, cofounder relationship depth, why-now."
+    },
+    {
+      "id": "D0004",
+      "provider": "gdocs",
+      "title": "Nozomio — pre-IC scratch",
+      "url": "https://docs.google.com/document/d/nozomio-pre-ic",
+      "snippet": "Cobra → Nia 4-yr lineage. Solo at 18. Backers (PG, Wolf) closest to dev-tool distribution. Conviction tension: lineage vs. distribution gap."
+    }
+  ]
+}

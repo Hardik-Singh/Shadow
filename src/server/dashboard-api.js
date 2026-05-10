@@ -68,22 +68,22 @@ async function handleRequest(req, res) {
     }
   }
 
-  // Gmail integration scaffold — fake OAuth + fixture-backed thread search.
-  if (u.pathname.startsWith('/integrations/gmail')) {
-    const gmail = require('../integrations/gmail');
-    if (req.method === 'GET' && u.pathname === '/integrations/gmail/status') {
-      return sendJson(res, 200, { connected: gmail.oauth.isConnected() });
+  // Docs (Notion + Google Docs) integration scaffold.
+  if (u.pathname.startsWith('/integrations/docs')) {
+    const docs = require('../integrations/docs');
+    if (req.method === 'GET' && u.pathname === '/integrations/docs/status') {
+      return sendJson(res, 200, { connected: docs.oauth.isConnected() });
     }
-    if (req.method === 'POST' && u.pathname === '/integrations/gmail/connect') {
-      await gmail.oauth.completeFakeConsent();
+    if (req.method === 'POST' && u.pathname === '/integrations/docs/connect') {
+      await docs.oauth.completeFakeConsent(u.query.provider || 'docs');
       return sendJson(res, 200, { connected: true });
     }
-    if (req.method === 'POST' && u.pathname === '/integrations/gmail/disconnect') {
-      gmail.oauth.disconnect();
+    if (req.method === 'POST' && u.pathname === '/integrations/docs/disconnect') {
+      docs.oauth.disconnect();
       return sendJson(res, 200, { connected: false });
     }
-    if (req.method === 'GET' && u.pathname === '/integrations/gmail/threads') {
-      return sendJson(res, 200, gmail.searchThreads({ query: u.query.q || '' }));
+    if (req.method === 'GET' && u.pathname === '/integrations/docs/list') {
+      return sendJson(res, 200, docs.listDocs({ provider: u.query.provider, query: u.query.q || '' }));
     }
   }
 
