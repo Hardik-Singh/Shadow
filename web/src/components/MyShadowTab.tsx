@@ -1,13 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
 import { Artifact } from '../mock/data';
-import { useArtifacts } from '../lib/use-artifacts';
+import { slugForArtifact } from '../lib/artifacts-api';
 import MemorySummary from './MemorySummary';
+import BehavioralWeights from './BehavioralWeights';
 import SignalChips from './SignalChips';
-import ShadowUpdates from './ShadowUpdates';
 import Actions from './Actions';
 import ChatYourShadow from './ChatYourShadow';
 import MyArtifacts from './MyArtifacts';
-import ArtifactDetail from './ArtifactDetail';
 import { Separator } from '@/components/ui/separator';
 
 type Props = {
@@ -16,41 +14,27 @@ type Props = {
   pending?: Artifact[];
 };
 
-export default function MyShadowTab({ onOpenInFirm, initialArtifactId, pending }: Props) {
-  const [open, setOpen] = useState<Artifact | null>(null);
-  const all = useArtifacts();
-  const openedIdRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (!initialArtifactId) return;
-    if (openedIdRef.current === initialArtifactId) return;
-    const a = all.find((x) => x.id === initialArtifactId);
-    if (a) {
-      openedIdRef.current = initialArtifactId;
-      setOpen(a);
-    }
-  }, [initialArtifactId, all]);
+export default function MyShadowTab({ pending }: Props) {
+  const navigate = (a: Artifact) => {
+    const slug = slugForArtifact(a);
+    window.history.pushState({}, '', `/artifact/${slug}`);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  };
 
   return (
     <div className="mx-auto grid max-w-[1280px] gap-x-12 gap-y-12 px-6 py-10 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
       <div className="flex min-w-0 flex-col gap-10">
         <MemorySummary />
+        <BehavioralWeights />
         <SignalChips />
         <Separator />
         <ChatYourShadow />
         <Separator />
-        <MyArtifacts onOpen={setOpen} pending={pending} />
+        <MyArtifacts onOpen={navigate} pending={pending} />
       </div>
       <div className="flex min-w-0 flex-col gap-8">
         <Actions />
-        <ShadowUpdates />
       </div>
-
-      <ArtifactDetail
-        artifact={open}
-        onClose={() => setOpen(null)}
-        onOpenInFirm={onOpenInFirm ? (a) => { onOpenInFirm(a); setOpen(null); } : undefined}
-      />
     </div>
   );
 }

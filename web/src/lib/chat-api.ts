@@ -24,6 +24,7 @@ export type AskShadowArgs = {
   partnerId: string;
   question: string;
   dealHint?: string;
+  scope?: 'partner' | 'firm';
 };
 
 export async function askShadow(args: AskShadowArgs): Promise<ShadowChatReply | null> {

@@ -450,6 +450,31 @@ ipcMain.handle('shadow:memory-delete', (_e, { id }) => {
   return require('./repos/memory').remove(id);
 });
 
+ipcMain.handle('shadow:ingest-file', async (_e, { path: filePath, name }) => {
+  try {
+    const files = require('./capture/files');
+    bus.emit('artifact', {
+      kind: 'file_ingest',
+      title: `ingesting ${name || filePath}`,
+      status: 'pending',
+      ts: Date.now(),
+    });
+    const result = await files.ingestFile(filePath);
+    send('signal:write', { verb: 'ingested', text: name || filePath, ts: Date.now() });
+    bus.emit('artifact', {
+      kind: 'file_ingest',
+      title: `ingested ${name || filePath}`,
+      status: 'done',
+      chunks: result && result.chunks,
+      ts: Date.now(),
+    });
+    return { ok: true, ...result };
+  } catch (err) {
+    console.warn('[ingest-file] failed', err && err.message);
+    return { error: err.message };
+  }
+});
+
 ipcMain.on('shadow:set-focus', (_e, text) => {
   userFocus = (text || '').toString().slice(0, 500);
 });
@@ -516,6 +541,8 @@ app.whenReady().then(async () => {
       registry.register(require('./actions/sourcing-sheet'));
       registry.register(require('./actions/founder-lookup'));
       registry.register(require('./actions/market-check'));
+      registry.register(require('./actions/comp-table'));
+      registry.register(require('./actions/deal-card'));
       registry.register(require('./actions/flag-deal'));
       profile.start();
       suggest.start();

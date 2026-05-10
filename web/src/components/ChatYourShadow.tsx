@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { conversation, Exchange, partnerPriorContacts } from '../mock/data';
+import { conversation, Exchange } from '../mock/data';
 import { useArtifacts } from '../lib/use-artifacts';
 import { slugForArtifact } from '../lib/artifacts-api';
 import { Input } from '@/components/ui/input';
@@ -24,11 +24,6 @@ const DECK_DOC_CARDS = [
   { artifactId: 'n6',  label: 'source sheet refresh' },
 ];
 
-const LINKEDIN_FALLBACK_CARDS = [
-  { artifactId: 'n13', label: 'sarah · note on arlan' },
-  { artifactId: 'n12', label: 'marcus · slack on arlan' },
-];
-
 type DocCard = { artifactId: string; label: string };
 
 type LiveExchange = Exchange & {
@@ -51,7 +46,7 @@ function navigateToSlug(slug: string) {
   window.dispatchEvent(new PopStateEvent('popstate'));
 }
 
-export default function ChatYourShadow({ mode = 'default', companyId }: Props) {
+export default function ChatYourShadow({ mode = 'default' }: Props) {
   const [value, setValue] = useState('');
   const [thread, setThread] = useState<LiveExchange[]>(mode === 'default' ? conversation : []);
   const [pending, setPending] = useState(false);
@@ -75,6 +70,21 @@ export default function ChatYourShadow({ mode = 'default', companyId }: Props) {
     ]);
   }, [mode]);
 
+  // linkedin mode: surface ONE message about related artifacts on mount.
+  useEffect(() => {
+    if (mode !== 'linkedin' || linkedinPrependedRef.current) return;
+    linkedinPrependedRef.current = true;
+    setThread([
+      {
+        id: `lkdn-seed-${Date.now()}`,
+        question: '',
+        answer: 'i found related artifacts on arlan — a slack thread and an email. added them to your artifacts list.',
+        time: 'just now',
+        isShadowOnly: true,
+      },
+    ]);
+  }, [mode]);
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const q = value.trim();
@@ -82,7 +92,6 @@ export default function ChatYourShadow({ mode = 'default', companyId }: Props) {
     setValue('');
 
     if (mode === 'deck') {
-      // append user message + canned shadow reply (if positive).
       const positive = /agree|yeah|like|love|good|yes|bullish/i.test(q);
       setThread((t) => [
         {
@@ -100,34 +109,10 @@ export default function ChatYourShadow({ mode = 'default', companyId }: Props) {
     }
 
     if (mode === 'linkedin') {
-      // first user message: prepend a system reply with prior-contact cards.
-      const cards: DocCard[] =
-        (companyId && partnerPriorContacts && (partnerPriorContacts as Record<string, { partnerId: string; artifactId: string; summary: string }[]>)[companyId]
-          ? (partnerPriorContacts as Record<string, { partnerId: string; artifactId: string; summary: string }[]>)[companyId].map((c) => ({
-              artifactId: c.artifactId,
-              label: `${c.partnerId} · ${c.summary}`,
-            }))
-          : LINKEDIN_FALLBACK_CARDS);
-
-      setThread((t) => {
-        const userTurn: LiveExchange = {
-          id: `q-${Date.now()}`,
-          question: q,
-          answer: '',
-          time: 'just now',
-        };
-        if (linkedinPrependedRef.current) return [userTurn, ...t];
-        linkedinPrependedRef.current = true;
-        const sys: LiveExchange = {
-          id: `lkdn-sys-${Date.now()}`,
-          question: '',
-          answer: "sarah k. and marcus t. have already talked to arlan — here's what they said",
-          time: 'just now',
-          isShadowOnly: true,
-          docs: cards,
-        };
-        return [userTurn, sys, ...t];
-      });
+      setThread((t) => [
+        { id: `q-${Date.now()}`, question: q, answer: '', time: 'just now' },
+        ...t,
+      ]);
       return;
     }
 
@@ -197,20 +182,18 @@ export default function ChatYourShadow({ mode = 'default', companyId }: Props) {
                 {x.docs.map((d, i) => {
                   const target = all.find((a) => a.id === d.artifactId);
                   const slug = target ? slugForArtifact(target) : null;
-                  const inner = (
-                    <div className="flex items-center gap-2 rounded-md border border-border bg-card p-2 transition-colors hover:border-foreground/20 hover:bg-secondary/40">
-                      <FileText className="h-3.5 w-3.5 shrink-0 text-accent" />
-                      <span className="truncate text-[12.5px] text-foreground/90">{d.label}</span>
-                    </div>
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      className="flex items-center gap-2 rounded-md border border-border bg-card px-2.5 py-2 text-left text-[12.5px] hover:border-foreground/20 hover:bg-secondary/40"
+                      onClick={() => slug && navigateToSlug(slug)}
+                      disabled={!slug}
+                    >
+                      <FileText className="h-3.5 w-3.5 text-accent" />
+                      <span>{d.label}</span>
+                    </button>
                   );
-                  if (slug) {
-                    return (
-                      <a key={i} href={`/artifact/${slug}`} onClick={(e) => { e.preventDefault(); navigateToSlug(slug); }}>
-                        {inner}
-                      </a>
-                    );
-                  }
-                  return <div key={i}>{inner}</div>;
                 })}
               </div>
             )}
