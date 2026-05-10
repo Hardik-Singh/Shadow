@@ -68,22 +68,21 @@ async function handleRequest(req, res) {
     }
   }
 
-  // Docs (Notion + Google Docs) integration scaffold.
-  if (u.pathname.startsWith('/integrations/docs')) {
-    const docs = require('../integrations/docs');
-    if (req.method === 'GET' && u.pathname === '/integrations/docs/status') {
-      return sendJson(res, 200, { connected: docs.oauth.isConnected() });
+  if (u.pathname.startsWith('/integrations/calendar')) {
+    const cal = require('../integrations/calendar');
+    if (req.method === 'GET' && u.pathname === '/integrations/calendar/status') {
+      return sendJson(res, 200, { connected: cal.oauth.isConnected() });
     }
-    if (req.method === 'POST' && u.pathname === '/integrations/docs/connect') {
-      await docs.oauth.completeFakeConsent(u.query.provider || 'docs');
+    if (req.method === 'POST' && u.pathname === '/integrations/calendar/connect') {
+      await cal.oauth.completeFakeConsent();
       return sendJson(res, 200, { connected: true });
     }
-    if (req.method === 'POST' && u.pathname === '/integrations/docs/disconnect') {
-      docs.oauth.disconnect();
+    if (req.method === 'POST' && u.pathname === '/integrations/calendar/disconnect') {
+      cal.oauth.disconnect();
       return sendJson(res, 200, { connected: false });
     }
-    if (req.method === 'GET' && u.pathname === '/integrations/docs/list') {
-      return sendJson(res, 200, docs.listDocs({ provider: u.query.provider, query: u.query.q || '' }));
+    if (req.method === 'GET' && u.pathname === '/integrations/calendar/events') {
+      return sendJson(res, 200, cal.priorMeetings({ founder: u.query.founder, company: u.query.company }));
     }
   }
 
