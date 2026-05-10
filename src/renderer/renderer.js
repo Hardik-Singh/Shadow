@@ -573,6 +573,7 @@ if (window.shadow && window.shadow.onArtifact) {
       founder_profile: 'Founder profile',
       market_check: 'Market check',
       comp_table: 'Comp table',
+      deal_card: 'Deal card',
       flag: 'Flagged',
     };
     const artifactId = a.data && a.data.artifactId;
