@@ -24,6 +24,13 @@
           </span>
           <span class="brand-name">Shadow</span>
         </div>
+        <button class="mode-chip nodrag" id="mode" title="Click to switch firm mode">
+          <span id="mode-label">VC</span>
+        </button>
+        <button class="shadow-mode-toggle nodrag" id="shadow-mode" title="Switch between help and autonomous mode">
+          <span class="sm-dot"></span>
+          <span class="sm-label" id="shadow-mode-label">help</span>
+        </button>
         <div class="header-right">
           <span class="session" id="session">0:00</span>
           <span class="dot" id="dot"></span>
@@ -50,6 +57,23 @@
       </header>
 
       <div class="scroll">
+        <!-- AUTONOMOUS PANEL (only visible in autonomous mode) -->
+        <section class="card autonomous-panel" id="card-autonomous">
+          <div class="auto-hero">
+            <div class="auto-hero-left">
+              <div class="auto-eyebrow">
+                <span class="auto-pulse"></span>
+                shadow is running
+              </div>
+              <div class="auto-title">handoff in progress</div>
+              <div class="auto-sub">running on daytona · approvals required · nothing sent</div>
+            </div>
+            <a class="auto-link" id="auto-open-dashboard" href="#">open dashboard →</a>
+          </div>
+          <ul class="auto-tasks" id="auto-tasks"></ul>
+          <div class="auto-foot" id="auto-foot">picking up where you left off · 0 of 3 done</div>
+        </section>
+
         <!-- WATCHING NOW -->
         <section class="card" id="card-watching">
           <div class="card-head nodrag" data-toggle="card-watching">

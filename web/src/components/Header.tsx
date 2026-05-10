@@ -35,7 +35,7 @@ export default function Header({ view, onViewChange, onNew }: Props) {
         </div>
 
         <nav className="ml-2 flex items-center gap-0.5 rounded-lg bg-secondary p-0.5" role="tablist" aria-label="view">
-          {(['mine', 'firm'] as const).map((v) => (
+          {(['mine', 'firm', 'autonomous'] as const).map((v) => (
             <button
               key={v}
               role="tab"
@@ -46,7 +46,7 @@ export default function Header({ view, onViewChange, onNew }: Props) {
               )}
               onClick={() => onViewChange(v)}
             >
-              {v === 'mine' ? 'My Shadow' : 'Firm Brain'}
+              {v === 'mine' ? 'My Shadow' : v === 'firm' ? 'Firm Brain' : 'Autonomous'}
             </button>
           ))}
         </nav>

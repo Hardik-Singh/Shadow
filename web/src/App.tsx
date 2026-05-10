@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import Header from './components/Header';
 import MyShadowTab from './components/MyShadowTab';
 import FirmBrainTab from './components/firm/FirmBrainTab';
+import AutonomousTab from './components/autonomous/AutonomousTab';
 import ArtifactPage from './components/ArtifactPage';
 import { PartnerChatProvider } from './components/PartnerChat';
 import { Artifact, View, deals } from './mock/data';
@@ -25,13 +26,13 @@ function readDeepLink(): { view: AppView; artifactSlug: string | null; artifactI
     return { view: 'firm', artifactSlug: null, artifactId: null, dealId };
   }
   if (artifactId) {
-    // Accept any artifact id — real artifacts (art_…) resolve from the
-    // useArtifacts() stream once they arrive over SSE; mock ids match the
-    // seed data on first render.
     return { view: 'mine', artifactSlug: null, artifactId, dealId: null };
   }
   if (p.get('view') === 'firm') {
     return { view: 'firm', artifactSlug: null, artifactId: null, dealId: null };
+  }
+  if (p.get('view') === 'autonomous') {
+    return { view: 'autonomous', artifactSlug: null, artifactId: null, dealId: null };
   }
   return { view: 'mine', artifactSlug: null, artifactId: null, dealId: null };
 }
@@ -155,7 +156,7 @@ export default function App() {
     setArtifactSlug(null);
     const params = new URLSearchParams(window.location.search);
     params.set('view', v);
-    if (v === 'mine') { params.delete('section'); params.delete('deal'); }
+    if (v !== 'firm') { params.delete('section'); params.delete('deal'); }
     window.history.replaceState({}, '', `/?${params.toString()}`);
   };
 
@@ -178,8 +179,10 @@ export default function App() {
               initialArtifactId={openArtifactId}
               pending={pending}
             />
-          ) : (
+          ) : view === 'firm' ? (
             <FirmBrainTab focusedDealId={focusedDealId} />
+          ) : (
+            <AutonomousTab />
           )}
         </div>
       </PartnerChatProvider>
