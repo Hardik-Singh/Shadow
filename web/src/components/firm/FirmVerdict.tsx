@@ -1,23 +1,40 @@
 import { useState } from 'react';
-import { Deal } from '../../mock/data';
+import { Deal, FirmVerdictData } from '../../mock/data';
 import VerdictPill from '../VerdictPill';
 import { Button } from '@/components/ui/button';
 import { Sparkles, Plus, Minus, Clock } from 'lucide-react';
 
-export default function FirmVerdict({ deal }: { deal: Deal }) {
-  const [generated, setGenerated] = useState(false);
+const API_BASE =
+  ((import.meta as unknown as { env?: Record<string, string> }).env?.VITE_SHADOW_API) ||
+  'http://127.0.0.1:4310';
 
-  if (!deal.firmVerdict) {
-    return (
-      <div className="rounded-xl border border-dashed border-border bg-secondary/30 p-5 text-[13px] text-muted-foreground">
-        Firm verdict not yet synthesized for this deal.
-      </div>
-    );
+async function fetchFirmVerdict(dealId: string): Promise<FirmVerdictData | null> {
+  try {
+    const res = await fetch(`${API_BASE}/firm/verdict`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dealId }),
+    });
+    if (!res.ok) return null;
+    const j = (await res.json()) as { verdict: FirmVerdictData };
+    return j.verdict;
+  } catch {
+    return null;
+  }
+}
+
+export default function FirmVerdict({ deal }: { deal: Deal }) {
+  const [verdict, setVerdict] = useState<FirmVerdictData | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function generate() {
+    setLoading(true);
+    const v = await fetchFirmVerdict(deal.id);
+    setVerdict(v ?? deal.firmVerdict ?? null);
+    setLoading(false);
   }
 
-  const v = deal.firmVerdict;
-
-  if (!generated) {
+  if (!verdict) {
     return (
       <div className="flex items-center justify-between gap-4 rounded-xl border border-dashed border-border bg-secondary/30 p-5">
         <div>
@@ -26,12 +43,15 @@ export default function FirmVerdict({ deal }: { deal: Deal }) {
             synthesize across {deal.verdicts.length} shadows + firm memory
           </div>
         </div>
-        <Button onClick={() => setGenerated(true)}>
-          <Sparkles className="h-3.5 w-3.5" /> Generate firm verdict
+        <Button onClick={generate} disabled={loading}>
+          <Sparkles className="h-3.5 w-3.5" />
+          {loading ? 'Synthesizing…' : 'Generate firm verdict'}
         </Button>
       </div>
     );
   }
+
+  const v = verdict;
 
   return (
     <div className="rounded-xl border border-accent/30 bg-card p-5 shadow-soft">
