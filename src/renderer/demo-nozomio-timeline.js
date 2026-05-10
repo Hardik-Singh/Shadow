@@ -10,11 +10,11 @@ window.nozomioArtifactSlug = slugFor;
 window.NOZOMIO_DEMO_TIMELINES = {
   stage1: [
     { atMs: 0, action: 'seeing', text: 'LinkedIn profile · Arlan Rakhmetzhanov · Nozomio founder' },
-    { atMs: 600, action: 'artifact', artifactId: 'n12', name: 'Nozomio · slack thread (jin + marcus)', tag: 'PRIOR', route: '/artifact/' + slugFor('n12', 'Slack Thread') },
-    { atMs: 900, action: 'artifact', artifactId: 'n13', name: 'Nozomio · sarah ↔ arlan email', tag: 'PRIOR', route: '/artifact/' + slugFor('n13', 'Email') },
-    { atMs: 1500, action: 'chat', text: 'people at the firm have already talked to arlan — i pulled the slack thread and email above.' },
+    { atMs: 1200, action: 'artifact', artifactId: 'n12', name: 'Nozomio · slack thread (jin + marcus)', tag: 'PRIOR', route: '/artifact/' + slugFor('n12', 'Slack Thread') },
+    { atMs: 1600, action: 'artifact', artifactId: 'n13', name: 'Nozomio · sarah ↔ arlan email', tag: 'PRIOR', route: '/artifact/' + slugFor('n13', 'Email') },
+    { atMs: 3000, action: 'chat', text: 'people at the firm have already talked to arlan — i pulled the slack thread and email above.' },
     {
-      atMs: 2500,
+      atMs: 5500,
       action: 'suggestions',
       suggestions: [
         { id: 'arlan-founder-background', label: "arlan's founder background", artifactId: 'n4', name: 'Arlan · founder background', route: '/artifact/' + slugFor('n4', 'Founder Background'), delayMs: 4000 },
@@ -25,8 +25,7 @@ window.NOZOMIO_DEMO_TIMELINES = {
   ],
   stage2: [
     { atMs: 0, action: 'seeing', text: 'Nozomio_deck.pdf · slide deck · Arlan Rakhmetzhanov' },
-    { atMs: 1800, action: 'chat', text: "you opened a deck. looks like you're getting ready for an ic meeting on this one." },
-    { atMs: 5200, action: 'chat', text: 'what do you think about the deck?' },
-    { atMs: 5200, action: 'awaitDeckReaction' },
+    { atMs: 5000, action: 'chat', text: 'what do you think about the deck?' },
+    { atMs: 5000, action: 'awaitDeckReaction' },
   ],
 };

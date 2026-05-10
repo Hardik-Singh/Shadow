@@ -408,9 +408,14 @@ promptForm.addEventListener('submit', (e) => {
   pushThought(`you: ${v}`);
   if (demoNozomioState.awaitingDeckReaction && /\b(like|liked|love|interesting|good|yes|bullish)\b/i.test(v)) {
     demoNozomioState.awaitingDeckReaction = false;
-    pushThought('got it. i can turn that read into the three useful artifacts.');
-    renderDemoPills(NOZOMIO_DECK_SUGGESTIONS);
-    pushWrite('ready', 'ic memo + meeting prep + pass email queued from deck reaction');
+    const t1 = setTimeout(() => {
+      pushThought('got it. i can turn that read into the three useful artifacts.');
+    }, 3000);
+    const t2 = setTimeout(() => {
+      renderDemoPills(NOZOMIO_DECK_SUGGESTIONS);
+      pushWrite('ready', 'ic memo + meeting prep + pass email queued from deck reaction');
+    }, 6500);
+    demoNozomioState.timers.push(t1, t2);
     promptInput.value = '';
     promptInput.placeholder = 'ask shadow...';
     return;
@@ -502,7 +507,7 @@ function applyNozomioDemoEvent(ev) {
   if (ev.action === 'awaitDeckReaction') demoNozomioState.awaitingDeckReaction = true;
   if (ev.action === 'write') pushWrite(ev.verb || 'note', ev.text);
   if (ev.action === 'artifact') addDemoArtifact({
-    artifactId: ev.id,
+    artifactId: ev.artifactId || ev.id,
     name: ev.name,
     tag: ev.tag,
     route: ev.route,

@@ -11,21 +11,7 @@ const DOC_TYPES = [
 ];
 const INTENTS = ['evaluate', 'source', 'research', 'write', 'communicate', 'decide', 'browse'];
 const NOZOMIO_DEMO_KEYWORDS = ['arlan', 'linkedin', 'nozomio', 'rakhmetzhanov', 'deck', '.pdf', 'slide', 'series f', 'series-f', 'seriesf', 'pitch'];
-const DEMO_THOUGHTS = [
-  {
-    id: 'profile',
-    re: /\b(shadow partner profile|how shadow sees you)\b/i,
-    text: 'you seem to be changing what i know about you. the profile is updating around investing taste and communication style.',
-    label: 'partner profile',
-  },
-  {
-    id: 'verdicts',
-    re: /\b(team verdicts|partner verdicts|firm verdict|shadows opinions|get shadows|against|for)\b/i,
-    require: /\b(nozomio|verdict|partner|shadow|firm)\b/i,
-    text: 'partners seem more aligned on the risk than the upside here. stronger disagreement than the usual infra deals, mostly around solo-founder load and price.',
-    label: 'firm verdicts',
-  },
-];
+const DEMO_THOUGHTS = [];
 
 function demoShortcutEnabled() {
   return process.env.SHADOW_DEMO_NOZOMIO !== '0';

@@ -132,9 +132,11 @@ export default function ArtifactPage({ artifactSlugOrId, onBack, onOpenInFirm }:
         )}
       </div>
 
-      <div className="min-w-0">
-        <ShadowOpinions artifactId={current.id} />
-      </div>
+      {current.id !== 'n6' && (
+        <div className="min-w-0">
+          <ShadowOpinions artifactId={current.id} />
+        </div>
+      )}
     </div>
   );
 }
