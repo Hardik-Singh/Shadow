@@ -10,9 +10,9 @@ window.nozomioArtifactSlug = slugFor;
 window.NOZOMIO_DEMO_TIMELINES = {
   stage1: [
     { atMs: 0, action: 'seeing', text: 'LinkedIn profile · Arlan Rakhmetzhanov · Nozomio founder' },
-    { atMs: 1200, action: 'artifact', artifactId: 'n12', name: 'Nozomio · slack thread (jin + marcus)', tag: 'PRIOR', route: '/artifact/' + slugFor('n12', 'Slack Thread') },
-    { atMs: 1600, action: 'artifact', artifactId: 'n13', name: 'Nozomio · sarah ↔ arlan email', tag: 'PRIOR', route: '/artifact/' + slugFor('n13', 'Email') },
-    { atMs: 3000, action: 'chat', text: 'people at the firm have already talked to arlan — i pulled the slack thread and email above.' },
+    { atMs: 3000, action: 'chat', text: 'people at the firm have already talked to arlan — pulling the slack thread and email below.' },
+    { atMs: 3500, action: 'artifact', artifactId: 'n12', name: 'Nozomio · slack thread (jin + marcus)', tag: 'PRIOR', route: '/artifact/' + slugFor('n12', 'Slack Thread') },
+    { atMs: 3800, action: 'artifact', artifactId: 'n13', name: 'Nozomio · sarah ↔ arlan email', tag: 'PRIOR', route: '/artifact/' + slugFor('n13', 'Email') },
     {
       atMs: 5500,
       action: 'suggestions',
