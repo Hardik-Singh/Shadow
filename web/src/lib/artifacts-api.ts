@@ -1,5 +1,21 @@
 import type { Artifact, ArtifactRelation } from '../mock/data';
 
+export function slugForArtifact(a: { id: string; type?: string; company?: string }): string {
+  const base = `${(a.company || 'artifact')}-${(a.type || 'doc')}`
+    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  let h = 0;
+  for (let i = 0; i < a.id.length; i++) h = (h * 31 + a.id.charCodeAt(i)) >>> 0;
+  const suf = h.toString(36).padStart(5, '0').slice(-5);
+  return `${base}-${suf}`;
+}
+
+export function idFromSlug(slug: string, all: Array<{ id: string; type?: string; company?: string }>): string | null {
+  for (const a of all) {
+    if (slugForArtifact(a) === slug) return a.id;
+  }
+  return null;
+}
+
 const BASE =
   ((import.meta as unknown as { env?: Record<string, string> }).env?.VITE_SHADOW_API) ||
   'http://127.0.0.1:4310';

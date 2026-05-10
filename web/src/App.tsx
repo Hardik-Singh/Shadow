@@ -2,31 +2,38 @@ import { useEffect, useState } from 'react';
 import Header from './components/Header';
 import MyShadowTab from './components/MyShadowTab';
 import FirmBrainTab from './components/firm/FirmBrainTab';
+import ArtifactPage from './components/ArtifactPage';
 import { PartnerChatProvider } from './components/PartnerChat';
 import { Artifact, View, deals } from './mock/data';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { runDemoAction } from './lib/artifacts-api';
 
-function readDeepLink(): { view: View; artifactId: string | null; dealId: string | null } {
+type AppView = View | 'artifact';
+
+function readDeepLink(): { view: AppView; artifactSlug: string | null; artifactId: string | null; dealId: string | null } {
   const p = new URLSearchParams(window.location.search);
+  const m = window.location.pathname.match(/^\/artifact\/([a-z0-9-]+)$/);
+  if (m) {
+    return { view: 'artifact', artifactSlug: m[1], artifactId: null, dealId: null };
+  }
   if (window.location.pathname === '/firm/nozomio') {
-    return { view: 'firm', artifactId: null, dealId: 'd6' };
+    return { view: 'firm', artifactSlug: null, artifactId: null, dealId: 'd6' };
   }
   const dealId = p.get('deal');
   const artifactId = p.get('artifact');
   if (dealId && deals.find((d) => d.id === dealId)) {
-    return { view: 'firm', artifactId: null, dealId };
+    return { view: 'firm', artifactSlug: null, artifactId: null, dealId };
   }
   if (artifactId) {
     // Accept any artifact id — real artifacts (art_…) resolve from the
     // useArtifacts() stream once they arrive over SSE; mock ids match the
     // seed data on first render.
-    return { view: 'mine', artifactId, dealId: null };
+    return { view: 'mine', artifactSlug: null, artifactId, dealId: null };
   }
   if (p.get('view') === 'firm') {
-    return { view: 'firm', artifactId: null, dealId: null };
+    return { view: 'firm', artifactSlug: null, artifactId: null, dealId: null };
   }
-  return { view: 'mine', artifactId: null, dealId: null };
+  return { view: 'mine', artifactSlug: null, artifactId: null, dealId: null };
 }
 
 const RESOLVED_BY_KIND: Record<string, Partial<Artifact>> = {
@@ -69,9 +76,10 @@ const RESOLVED_BY_KIND: Record<string, Partial<Artifact>> = {
 
 export default function App() {
   const initial = readDeepLink();
-  const [view, setView] = useState<View>(initial.view);
+  const [view, setView] = useState<AppView>(initial.view);
   const [focusedDealId, setFocusedDealId] = useState<string | null>(initial.dealId);
   const [openArtifactId, setOpenArtifactId] = useState<string | null>(initial.artifactId);
+  const [artifactSlug, setArtifactSlug] = useState<string | null>(initial.artifactSlug);
   const [pending, setPending] = useState<Artifact[]>([]);
 
   useEffect(() => {
@@ -80,6 +88,7 @@ export default function App() {
       setView(next.view);
       setFocusedDealId(next.dealId);
       setOpenArtifactId(next.artifactId);
+      setArtifactSlug(next.artifactSlug);
     };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
@@ -143,18 +152,27 @@ export default function App() {
     setView(v);
     if (v === 'mine') setFocusedDealId(null);
     setOpenArtifactId(null);
+    setArtifactSlug(null);
     const params = new URLSearchParams(window.location.search);
     params.set('view', v);
     if (v === 'mine') { params.delete('section'); params.delete('deal'); }
-    window.history.replaceState({}, '', `?${params.toString()}`);
+    window.history.replaceState({}, '', `/?${params.toString()}`);
   };
+
+  const headerView: View = view === 'artifact' ? 'mine' : view;
 
   return (
     <TooltipProvider delayDuration={150}>
       <PartnerChatProvider>
         <div className="min-h-screen bg-background">
-          <Header view={view} onViewChange={onChangeView} onNew={handleNew} />
-          {view === 'mine' ? (
+          <Header view={headerView} onViewChange={onChangeView} onNew={handleNew} />
+          {view === 'artifact' ? (
+            <ArtifactPage
+              artifactSlugOrId={artifactSlug ?? ''}
+              onBack={() => onChangeView('mine')}
+              onOpenInFirm={onOpenInFirm}
+            />
+          ) : view === 'mine' ? (
             <MyShadowTab
               onOpenInFirm={onOpenInFirm}
               initialArtifactId={openArtifactId}

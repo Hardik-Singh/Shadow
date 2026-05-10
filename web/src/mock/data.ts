@@ -582,48 +582,6 @@ export const artifacts: Artifact[] = [
 
   /* ── Nozomio (live demo case) ─────────────────────────────────────── */
   {
-    id: 'n1',
-    company: 'Nozomio',
-    type: 'Sourcing Sheet',
-    mode: 'VC',
-    time: '2 weeks ago',
-    authorId: 'mt',
-    reviewerIds: [],
-    verdict: 'investigate',
-    read: 'Marcus\'s starter sheet · public facts only · no firm cross-refs yet.',
-    body:
-      'Marcus put this together two weeks ago after the YC S25 batch dropped. Covers the basics — company, round, team, public news — nothing on firm context or verdict. Company: Nozomio (YC S25, SF, founded 2025, ~3 employees). Product: Nia, a search/index API that gives AI coding agents continuous context — docs, research papers, datasets, private repos — so they don\'t rely on stale training data. Round: $6.2M seed, CRV led, BoxGroup + LocalGlobe + angels (Paul Graham, Thomas Wolf). Founder: Arlan Rakhmetzhanov, 18, solo, Kazakhstan, Stanford research dropout, Forbes 30u30. Public press: TechCrunch, Yahoo Finance pitch-deck roundup, recent YouTube interview. Marcus\'s note: "interesting profile, want a partner read before going further."',
-    sources: ['notion', 'prior'],
-  },
-  {
-    id: 'n2',
-    company: 'Nozomio',
-    type: 'Investment Thesis',
-    mode: 'VC',
-    time: 'just now',
-    authorId: 'me',
-    reviewerIds: ['jp', 'sk', 'mt', 'lr', 'hc'],
-    verdict: 'invest',
-    read: 'Bullish. Cobra→Nia is 4 years of one obsession — that\'s the signal.',
-    body:
-      'Why now. The context layer for AI coding agents is the next infra fight. Foundation models are commoditizing; what compounds is the agent\'s ability to reach live, private, structured context — code, docs, datasets — without relearning it every session. Nia sits exactly there, and it ships an API the consuming side (Cursor, Claude-style agents, in-house RAG stacks) actually wants.\n\nWhy Arlan. He\'s been working on this exact problem for four years. His Stanford research with a Caltech professor was *Cobra*, a static-analysis tool for finding defects in source code. Nia is the commercial generalization of that work — same primitive (structured indexing of code), bigger surface (any context, served live to agents). This isn\'t a pivot, it\'s a thesis he has refined since 16. Add the prior 20k-user startup he shipped at 15, the GitHub footprint at @arlanrakh, and Forbes 30u30 — every signal points to a founder who builds.\n\nWhy the obvious objections don\'t kill it for me. Solo at 18, hot round, no GTM yet — I hear it. But solo + shipping is not the same risk as solo + still-deciding. PG and Wolf re-upping isn\'t hype, it\'s the people closest to dev-tool distribution betting on him. And GTM in dev-infra is bottom-up — Nia is already wired into agent stacks people are building this quarter. Conviction here, even at the round.',
-    sources: ['notion', 'prior'],
-  },
-  {
-    id: 'n3',
-    company: 'Nozomio',
-    type: 'Deal Verdict',
-    mode: 'VC',
-    time: 'just now',
-    authorId: 'me',
-    reviewerIds: ['jp', 'sk', 'mt', 'lr', 'hc'],
-    verdict: 'invest',
-    read: 'INVEST · conviction high · $2M check · pulled from Marcus\'s sheet + thesis.',
-    body:
-      'Recommendation: INVEST.\nConviction: high.\nSuggested check: $2M.\n\nReasons FOR (in priority):\n1. Cobra → Nia lineage. Four-year obsession with the same primitive. The strongest founder-fit signal in the file.\n2. Distribution shape. Dev-tools, API-first, bottom-up. Nia is already getting wired into agent stacks this quarter. That\'s how this category gets won.\n3. Backers signal what they know. Paul Graham + Thomas Wolf re-upping at this stage means the people closest to dev-tool distribution have priced in the founder risk and still want in.\n\nRisks (acknowledged, monitorable, not blockers):\n• Solo founder at 18 — track whether Arlan brings on a technical co-founder in the next 6 months. If he does, pattern strengthens. If he doesn\'t, re-rate at month 9.\n• Round is hot. Entry is at the top of what the firm typically pays for unproven GTM. Mitigant: ownership target $1.5–2M, not stretching for more.\n• GTM execution unproven. Standard for the stage. Watch for net new agent-stack integrations month over month.\n\nPulled from: Marcus T.\'s starter sourcing sheet (n1) + my Nozomio thesis (n2) + founder background (n4).',
-    sources: ['notion', 'prior'],
-  },
-  {
     id: 'n4',
     company: 'Nozomio',
     type: 'Founder Background',
@@ -695,8 +653,8 @@ export const artifacts: Artifact[] = [
       '<div style="display:grid;gap:10px">' +
       '<div style="border:1px solid hsl(var(--border));border-radius:10px;padding:12px"><div style="display:flex;gap:8px;align-items:center"><span style="width:28px;height:28px;border-radius:7px;display:grid;place-items:center;background:#0a66c2;color:white;font-weight:800">in</span><strong>LinkedIn</strong></div><p>Arlan profile, current Nozomio role, Stanford AI lab overlap, one-hop paths through Sarah Chen.</p><code>arlan rakhmetzhanov linkedin nozomio stanford cobra</code></div>' +
       '<div style="border:1px solid hsl(var(--border));border-radius:10px;padding:12px"><div style="display:flex;gap:8px;align-items:center"><span style="width:28px;height:28px;border-radius:7px;display:grid;place-items:center;background:#111;color:white;font-weight:800">X</span><strong>X / social</strong></div><p>Launch thread, follower spike, developer replies asking for private-repo indexing and fresh-doc context.</p><code>nozomio nia launch private repos agent context</code></div>' +
-      '<div style="border:1px solid hsl(var(--border));border-radius:10px;padding:12px"><div style="display:flex;gap:8px;align-items:center"><span style="width:28px;height:28px;border-radius:7px;display:grid;place-items:center;background:#146aff;color:white;font-weight:800">CB</span><strong>Crunchbase</strong></div><p>Seed metadata, investor graph, company location, headcount range, CRV-led financing signal.</p><code>nozomio seed crv paul graham thomas wolf</code></div>' +
-      '<div style="border:1px solid hsl(var(--border));border-radius:10px;padding:12px"><div style="display:flex;gap:8px;align-items:center"><span style="width:28px;height:28px;border-radius:7px;display:grid;place-items:center;background:#24292f;color:white;font-weight:800">GH</span><strong>GitHub</strong></div><p>@arlanrakh repo footprint, cobra-adjacent work, commit cadence, top languages: Python, TypeScript, Rust.</p><code>arlanrakh github cobra static analysis</code></div>' +
+      '<div style="border:1px solid hsl(var(--border));border-radius:10px;padding:12px"><div style="display:flex;gap:8px;align-items:center"><span style="width:28px;height:28px;border-radius:7px;display:grid;place-items:center;background:#146aff;color:white;font-weight:800">CB</span><strong>Crunchbase</strong></div><p>co-investors: <strong>CRV</strong> lead $4M · <strong>BoxGroup</strong> $750k · <strong>LocalGlobe</strong> $750k · angels: Paul Graham, Thomas Wolf, Sam Altman SAFE. <em style="opacity:.65">(modeled — round detail not all public)</em></p><code>nozomio seed crv boxgroup localglobe paul graham thomas wolf altman</code></div>' +
+      '<div style="border:1px solid hsl(var(--border));border-radius:10px;padding:12px"><div style="display:flex;gap:8px;align-items:center"><span style="width:28px;height:28px;border-radius:7px;display:grid;place-items:center;background:#24292f;color:white;font-weight:800">GH</span><strong>GitHub</strong></div><p>repos: <code>@arlanrakh/cobra-static</code>, <code>@arlanrakh/nia-context</code>, <code>@arlanrakh/agent-ctx-bench</code>. 47 commits last 30 days, 4 of which are weekend pushes — solo cadence.</p><code>arlanrakh github cobra-static nia-context agent-ctx-bench</code></div>' +
       '<div style="border:1px solid hsl(var(--border));border-radius:10px;padding:12px"><div style="display:flex;gap:8px;align-items:center"><span style="width:28px;height:28px;border-radius:7px;display:grid;place-items:center;background:#d9892f;color:white;font-weight:800">N</span><strong>Nozomio docs / site</strong></div><p>Nia positioned as context infrastructure, not a coding assistant. Source types: docs, papers, datasets, private repos.</p><code>nozomio nia api docs papers datasets private repos</code></div>' +
       '<div style="border:1px solid hsl(var(--border));border-radius:10px;padding:12px"><div style="display:flex;gap:8px;align-items:center"><span style="width:28px;height:28px;border-radius:7px;display:grid;place-items:center;background:#6b7280;color:white;font-weight:800">FM</span><strong>firm memory</strong></div><p>Pinecone March visit, Modal Feb visit, Replit buyer note. Same context-layer wedge, earlier and more founder-driven.</p><code>firm memory pinecone modal replit context layer devtools</code></div>' +
       '</div>' +
@@ -706,6 +664,22 @@ export const artifacts: Artifact[] = [
       '<blockquote>Pinecone customer call, 2024: "the database mattered once the model needed live company context, not toy data."</blockquote>' +
       '<blockquote>Modal user interview, 2025: "we picked the tool that let our agents reach fresh compute and code without ceremony."</blockquote>' +
       '<blockquote>Replit buyer note, 2023: "developers adopt infra when it removes setup from the loop. anything else is sales theater."</blockquote>' +
+      '<h3>comparison vs prior firm deals</h3>' +
+      '<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">' +
+      '<div style="border:1px solid hsl(var(--border));border-radius:10px;padding:12px"><div style="font-weight:700">Pinecone</div><div style="color:hsl(var(--muted-foreground));font-size:12.5px">traction: 200+ paying teams at the time<br/>founder: repeat, prior infra exit<br/>wedge: vector db for retrieval<br/>our take: passed mar 2024 — wedge unclear at the time, in retrospect we underweighted bottoms-up dev-tools</div></div>' +
+      '<div style="border:1px solid hsl(var(--border));border-radius:10px;padding:12px"><div style="font-weight:700">Modal</div><div style="color:hsl(var(--muted-foreground));font-size:12.5px">traction: serverless gpu wedge<br/>founder: erikbern, repeat<br/>wedge: gpu infra for ml<br/>our take: passed late, still watching</div></div>' +
+      '<div style="border:1px solid hsl(var(--border));border-radius:10px;padding:12px"><div style="font-weight:700">Replit</div><div style="color:hsl(var(--muted-foreground));font-size:12.5px">traction: huge user base, weak monetization<br/>founder: amjad, very known<br/>wedge: in-browser ide<br/>our take: early conversation that went cold on price</div></div>' +
+      '<div style="border:1px solid hsl(var(--border));border-radius:10px;padding:12px"><div style="font-weight:700">Cursor</div><div style="color:hsl(var(--muted-foreground));font-size:12.5px">traction: viral dev adoption<br/>founder: technical, young<br/>wedge: assistant ux on top of llms<br/>our take: passed at seed, would do differently now</div></div>' +
+      '</div>' +
+      '<h3>recent posts</h3>' +
+      '<div style="display:grid;gap:10px">' +
+      '<div style="border:1px solid hsl(var(--border));border-radius:10px;padding:12px"><div style="font-weight:700">X · launch thread "introducing nia · context for coding agents"</div><div style="color:hsl(var(--muted-foreground));font-size:12.5px">3 days ago — wedge is private repo + fresh docs, not assistant ux.</div></div>' +
+      '<div style="border:1px solid hsl(var(--border));border-radius:10px;padding:12px"><div style="font-weight:700">YouTube · interview on the round</div><div style="color:hsl(var(--muted-foreground));font-size:12.5px">1 week ago — cobra → nia framing is rehearsed and crisp.</div></div>' +
+      '<div style="border:1px solid hsl(var(--border));border-radius:10px;padding:12px"><div style="font-weight:700">Hacker News · top comment by founder</div><div style="color:hsl(var(--muted-foreground));font-size:12.5px">2 weeks ago — fresh-context-for-agents thread; competing claims call out cursor + pinecone limits.</div></div>' +
+      '<div style="border:1px solid hsl(var(--border));border-radius:10px;padding:12px"><div style="font-weight:700">Personal blog · "context windows vs context retrieval"</div><div style="color:hsl(var(--muted-foreground));font-size:12.5px">3 weeks ago — this is the thesis post, not marketing.</div></div>' +
+      '</div>' +
+      '<h3>synthesis</h3>' +
+      '<p>arlan has been on this single thread for four years. cobra → nia is one continuous research line, and CRV re-upping after seeing the commercial generalization is the loudest signal in the file. the dev-tool wedge — fresh context for coding agents, including private repos — sits exactly where our pinecone/modal pattern said the next layer would form. the disagreement won\'t be on whether the work is real, it will be on solo-founder load and price.</p>' +
       '</div>',
     sources: ['nia', 'notion', 'prior'],
   },
@@ -826,23 +800,6 @@ export const artifacts: Artifact[] = [
     sources: ['notion', 'prior', 'nia'],
   },
   {
-    id: 'n9',
-    company: 'Nozomio',
-    type: 'Research Note',
-    mode: 'VC',
-    time: 'stored doc',
-    authorId: 'mt',
-    reviewerIds: ['me'],
-    verdict: 'investigate',
-    read: 'stored note · yc s25 context-layer companies · nozomio tagged as strongest technical-founder signal.',
-    body:
-      'Stored research note from the YC S25 batch scan.\n\n' +
-      'Nozomio was tagged alongside other agent-infra/context-layer companies because it sits closest to the live-context problem every coding agent runs into: private repos, docs, papers, and datasets change faster than model training cycles.\n\n' +
-      'Why it was stored: founder-market fit looked unusually sharp for the stage. Arlan had already worked on Cobra, a static-analysis tool, before commercializing the broader context primitive through Nia.\n\n' +
-      'Relation reason: same company, same founder, same context-layer thesis. Automatically linked to the live source sheet, memo, and intro email.',
-    sources: ['prior', 'notion'],
-  },
-  {
     id: 'n11',
     company: 'Nozomio',
     type: 'Network Map',
@@ -899,6 +856,27 @@ export const artifacts: Artifact[] = [
           text: 'if we pass, it should be price or company-building risk. not founder technical depth.',
           reactions: ['+1', '100'],
         },
+      ],
+    },
+  },
+  {
+    id: 'n13',
+    company: 'Nozomio',
+    type: 'Email',
+    mode: 'VC',
+    time: '6 months ago',
+    authorId: 'sk',
+    reviewerIds: [],
+    verdict: 'investigate',
+    read: 'sarah pinged arlan after stanford. casual reconnect, no commitment.',
+    bodyKind: 'email',
+    body: '',
+    sources: ['email'],
+    email: {
+      subject: 're: cobra → nia',
+      messages: [
+        { from: 'arlan@nozom.io', to: 'sarah.k@firm.com', time: '6 mo ago', body: 'sarah — just saw your note. yeah, nia is the commercial generalization of cobra. building it solo for now. happy to send the latest demo if useful.' },
+        { from: 'sarah.k@firm.com', to: 'arlan@nozom.io', time: '6 mo ago', body: 'love this. when you raise, i want to be in the conversation. ping me before the round closes.' },
       ],
     },
   },
@@ -1051,7 +1029,7 @@ export const deals: Deal[] = [
     lastActivity: 'just now',
     originatorId: 'mt',
     yourArtifactId: 'n7',
-    relatedArtifactIds: ['n6', 'n7', 'n8', 'n10', 'n11', 'n12', 'n9', 'n1', 'n2', 'n3', 'n4', 'n5'],
+    relatedArtifactIds: ['n6', 'n7', 'n8', 'n10', 'n11', 'n12', 'n13', 'n4', 'n5'],
     consensus: 40,
     verdicts: [
       { teammateId: 'me', verdict: 'invest', conviction: 'high',   signals: ['Cobra → Nia 4-yr lineage', 'ships solo', 'PG + Wolf re-up'] },
@@ -1525,4 +1503,115 @@ export const sourceLabel: Record<SourceKind, string> = {
   calendar: 'Calendar',
   prior:    'Prior deals',
   nia:      'World (Nia)',
+};
+
+/* ── opinions, inbound actions, prior contacts ──────────────────────── */
+
+export type OpinionEvidence = { kind: string; label: string; artifactId?: string };
+export type OpinionPrior = { kind: 'similar' | 'different'; label: string; artifactId?: string; outcome: string };
+export type PartnerOpinion = {
+  verdict: Verdict;
+  verdictText: string;
+  evidence: OpinionEvidence[];
+  priors: OpinionPrior[];
+};
+
+export const opinions: Record<string, Record<string, PartnerOpinion>> = {
+  n6: {
+    sk: {
+      verdict: 'invest',
+      verdictText: 'cobra → nia is the strongest founder-fit signal in the file. i told him six months ago to ping me before the round closed. this is exactly the bet.',
+      evidence: [
+        { kind: 'email', label: 'reconnect email w/ arlan · 6 mo ago', artifactId: 'n13' },
+        { kind: 'memory', label: '"young technical founder, ships, conviction-driven" — sarah\'s archetype' },
+      ],
+      priors: [
+        { kind: 'similar', label: 'helix compute (led seed 2023)', outcome: 'series b, marked at 4.1x' },
+        { kind: 'different', label: 'volt ai (passed 2024)', outcome: 'similar age but no shipping history — pattern broke' },
+      ],
+    },
+    jp: {
+      verdict: 'investigate',
+      verdictText: 'i don\'t underwrite solo founders past a hot seed. the technical line is real but the company-building risk is unpriced.',
+      evidence: [
+        { kind: 'slack', label: '#sourcing — "cracked but solo"', artifactId: 'n12' },
+        { kind: 'memory', label: '"two founders who met at YC last quarter — that\'s a hard pass"' },
+      ],
+      priors: [
+        { kind: 'similar', label: 'mira health (passed 2024)', outcome: 'solo founder, raised at 2x our entry, then stalled at series A' },
+        { kind: 'different', label: 'bolt robotics (led 2022)', outcome: 'two founders, 4 years together — clean execution' },
+      ],
+    },
+    mt: {
+      verdict: 'investigate',
+      verdictText: 'flagged him in #vc-shared the day yc s25 dropped. cobra lineage is the best part. need a second technical reference before i\'d push harder.',
+      evidence: [
+        { kind: 'slack', label: '#sourcing — flagged after yc s25', artifactId: 'n12' },
+        { kind: 'memory', label: '"if the CTO came from Stripe i want to talk to them"' },
+      ],
+      priors: [
+        { kind: 'similar', label: 'helix compute sourcing memo', outcome: 'pushed for a second technical ref → unlocked the deal' },
+        { kind: 'different', label: 'acme inc (passed 2024)', outcome: 'team slide checked out but no founder obsession' },
+      ],
+    },
+    lr: {
+      verdict: 'pass',
+      verdictText: 'paying design partners > LOIs every time. nia has neither yet. i\'d wait two quarters.',
+      evidence: [
+        { kind: 'memory', label: '"paying design partners > LOIs every time"' },
+        { kind: 'memory', label: '"hardware dilution risk — never works the way the deck says"' },
+      ],
+      priors: [
+        { kind: 'similar', label: 'mira health pass memo', outcome: 'no paying customers at seed — stalled exactly as predicted' },
+        { kind: 'different', label: 'helix compute', outcome: 'had 3 paying design partners pre-seed — different shape' },
+      ],
+    },
+    hc: {
+      verdict: 'investigate',
+      verdictText: 'infra is the only place i actually understand the moat. context layer for agents is real. ownership target matters more than entry.',
+      evidence: [
+        { kind: 'memory', label: '"infra is the only place i actually understand the moat"' },
+        { kind: 'memory', label: '"if they\'ve worked together 4+ years i don\'t worry about cofounder split"' },
+      ],
+      priors: [
+        { kind: 'similar', label: 'datadog seed (passed 1990s-thinking)', outcome: 'lesson: at infra, the wedge is what matters, not founder count' },
+        { kind: 'different', label: 'helix compute', outcome: 'won on ownership, not entry price — same playbook applies' },
+      ],
+    },
+  },
+  n7: {
+    sk: { verdict: 'invest', verdictText: 'memo lines up with what i told arlan months ago. conviction high.', evidence: [{ kind: 'email', label: 'reconnect w/ arlan · 6 mo ago', artifactId: 'n13' }], priors: [{ kind: 'similar', label: 'helix compute ic memo', outcome: 'same pattern, 4.1x mark' }, { kind: 'different', label: 'volt ai pass', outcome: 'no shipping history, broke pattern' }] },
+    jp: { verdict: 'investigate', verdictText: 'memo soft-pedals the solo-founder risk. fix the risks section before ic.', evidence: [{ kind: 'slack', label: '#sourcing thread', artifactId: 'n12' }], priors: [{ kind: 'similar', label: 'mira health', outcome: 'similar shape, stalled' }, { kind: 'different', label: 'bolt robotics', outcome: 'two founders, clean' }] },
+    mt: { verdict: 'investigate', verdictText: 'memo is solid but i want a second technical ref before we push to ic.', evidence: [], priors: [{ kind: 'similar', label: 'helix compute', outcome: 'second ref unlocked it' }, { kind: 'different', label: 'acme inc', outcome: 'no obsession, passed' }] },
+    lr: { verdict: 'pass', verdictText: 'memo doesn\'t address paying customers. i\'d wait.', evidence: [], priors: [{ kind: 'similar', label: 'mira health', outcome: 'no paying customers, stalled' }, { kind: 'different', label: 'helix compute', outcome: 'had design partners — different shape' }] },
+    hc: { verdict: 'investigate', verdictText: 'wedge is right. ownership target $1.5–2M is the right bound.', evidence: [], priors: [{ kind: 'similar', label: 'datadog lesson', outcome: 'wedge > founder count' }, { kind: 'different', label: 'helix compute', outcome: 'won on ownership' }] },
+  },
+};
+
+export type FirmInboundActionKind = 'inbound-pitch' | 'founder-raised' | 'portfolio-signal';
+export type FirmInboundAction = {
+  id: string;
+  kind: FirmInboundActionKind;
+  title: string;
+  subtitle: string;
+  artifactId?: string;
+  reason: string;
+};
+
+export const firmInboundActions: FirmInboundAction[] = [
+  { id: 'fa1', kind: 'inbound-pitch', title: 'lattice cli — dev-tool, api-first, $200k mrr', subtitle: 'series a · solo technical founder · ex-segment', reason: 'matches your "young technical founder, ships, conviction-driven" archetype — 3 of your last 5 invests fit this' },
+  { id: 'fa2', kind: 'inbound-pitch', title: 'fresco — context layer for support agents', subtitle: 'seed · 2 founders, ex-anthropic and ex-stripe', reason: 'similar wedge to nozomio · "infra is the only place i actually understand the moat"' },
+  { id: 'fa3', kind: 'inbound-pitch', title: 'meridian — eval framework for production llms', subtitle: 'seed · post-revenue · 12 paying design partners', reason: '"paying design partners > LOIs every time" — meridian has 12, mostly fortune-500' },
+  { id: 'fa4', kind: 'founder-raised', title: 'priya menon raised series A', subtitle: 'rivet ai · you met her in oct 2025', reason: 'you flagged "rivet team is the strongest data ml team i\'ve seen this year" — round closed yesterday' },
+  { id: 'fa5', kind: 'founder-raised', title: 'james wei raised seed', subtitle: 'forge robotics · met at ai infra summit', reason: 'you said "hardware dilution risk — never works the way the deck says" — they kept dilution at 18%, raising at $40m post' },
+  { id: 'fa6', kind: 'portfolio-signal', title: 'helix compute · nps drop in last 30 days', subtitle: 'portfolio co · led seed 2023', reason: 'signal: 3 enterprise customers paused expansion · this is the second time this quarter — consider dropping a note to the founder' },
+];
+
+export type PartnerPriorContact = { partnerId: string; artifactId: string; summary: string };
+
+export const partnerPriorContacts: Record<string, PartnerPriorContact[]> = {
+  Nozomio: [
+    { partnerId: 'sk', artifactId: 'n13', summary: 'pinged him after stanford' },
+    { partnerId: 'mt', artifactId: 'n12', summary: 'flagged him in #sourcing after the yc batch dropped' },
+  ],
 };
