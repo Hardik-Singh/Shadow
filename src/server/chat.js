@@ -29,9 +29,12 @@ function searchScopeFor(partner) {
   return { scope: 'teammate', partner: ctx.ME, firm: ctx.FIRM, teammatePartner: partner };
 }
 
-async function chat({ partnerId, question, dealHint }) {
+async function chat({ partnerId, question, dealHint, scope }) {
   if (!question || !question.trim()) {
     throw new Error('question is required');
+  }
+  if (scope === 'firm') {
+    return firmChat({ question, dealHint });
   }
   const partner = buildPartner(partnerId);
   if (!partner) throw new Error(`unknown partner ${partnerId}`);
@@ -105,6 +108,88 @@ async function chat({ partnerId, question, dealHint }) {
   return {
     partnerName: partner.name,
     partnerId: partner.id,
+    answer: out.answer || out._raw || '(no answer)',
+    confidence: out.confidence || 'medium',
+    citations,
+  };
+}
+
+// Firm-scope query: searches the firm-wide vault (every partner's memories)
+// and synthesizes a single firm-voice answer with citations.
+const FIRM_SYSTEM = `You answer in the voice of a venture firm's collective memory — a synthesis of every partner who runs Shadow.
+- Cite which partners and which deals informed the answer when MEMORIES make it clear.
+- Concise — 3-5 sentences. Plain language. No marketing tone.
+- If MEMORIES is too thin, say so plainly and suggest who to ask.
+- Output strict JSON only. Schema:
+  { "answer": string, "confidence": "low"|"medium"|"high", "cited_memory_ids": [string] }`;
+
+async function firmChat({ question, dealHint }) {
+  let hits = [];
+  try {
+    hits = await hs.search({
+      scope: 'firm',
+      partner: ctx.ME,
+      firm: ctx.FIRM,
+      query: dealHint ? `${question}\n(context: ${dealHint})` : question,
+      sources: ['vault'],
+      k: 12,
+      halfLifeHours: 24 * 365,
+    });
+  } catch (err) {
+    return {
+      partnerId: 'firm',
+      partnerName: (ctx.FIRM && ctx.FIRM.name) || 'firm',
+      answer: `(firm memory backend unreachable: ${err.message})`,
+      confidence: 'low',
+      citations: [],
+    };
+  }
+
+  const memBlock = summarizeHits(hits, 'firm memory');
+  const userPrompt = [
+    `FIRM: ${(ctx.FIRM && ctx.FIRM.name) || 'firm'}`,
+    dealHint ? `DEAL CONTEXT: ${dealHint}` : null,
+    '',
+    `MEMORIES (${hits.length}, top first):`,
+    memBlock,
+    '',
+    'Memory ids you may cite:',
+    hits.slice(0, 12).map((h, i) => `  m${i + 1} = ${(h.id || h.resource_id || `idx_${i}`)}`).join('\n'),
+    '',
+    `QUESTION: ${question}`,
+    '',
+    'Answer now. JSON only.',
+  ].filter(Boolean).join('\n');
+
+  const out = await llmJson({ system: FIRM_SYSTEM, user: userPrompt, maxTokens: 700 });
+  if (out._stub) {
+    return {
+      partnerId: 'firm',
+      partnerName: (ctx.FIRM && ctx.FIRM.name) || 'firm',
+      answer: hits.length
+        ? `(firm synthesis offline; closest memory: "${(hits[0].text || '').slice(0, 200)}")`
+        : '(no firm memories yet on this.)',
+      confidence: 'low',
+      citations: [],
+    };
+  }
+
+  const idToHit = new Map();
+  hits.forEach((h, i) => {
+    idToHit.set(`m${i + 1}`, h);
+    if (h.id) idToHit.set(String(h.id), h);
+    if (h.resource_id) idToHit.set(String(h.resource_id), h);
+  });
+  const citedIds = Array.isArray(out.cited_memory_ids) ? out.cited_memory_ids : [];
+  const citations = citedIds.map((id) => idToHit.get(id)).filter(Boolean).slice(0, 6).map((h) => ({
+    id: h.id || h.resource_id || null,
+    snippet: (h.text || h.content || '').replace(/^\[shadow\|[^\]]+\]\n?/, '').trim().slice(0, 220),
+    score: typeof h.adjusted === 'number' ? Number(h.adjusted.toFixed(3)) : null,
+  }));
+
+  return {
+    partnerId: 'firm',
+    partnerName: (ctx.FIRM && ctx.FIRM.name) || 'firm',
     answer: out.answer || out._raw || '(no answer)',
     confidence: out.confidence || 'medium',
     citations,

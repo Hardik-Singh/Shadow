@@ -8,6 +8,7 @@ import People from './People';
 import Meetings from './Meetings';
 import Notes from './Notes';
 import FirmArtifacts from './FirmArtifacts';
+import FirmQuery from './FirmQuery';
 import ArtifactDetail from '../ArtifactDetail';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 
@@ -49,6 +50,7 @@ export default function FirmBrainTab({ focusedDealId }: Props) {
       <FirmSidebar section={section} onChange={changeSection} onOpenDeal={openDeal} />
 
       <main className="flex-1 px-8 py-10">
+        <FirmQuery />
         {section === 'pipeline'  && <Pipeline onOpenDeal={openDeal} />}
         {section === 'companies' && <Companies onOpenDeal={openDeal} />}
         {section === 'people'    && <People onOpenDeal={openDeal} />}
