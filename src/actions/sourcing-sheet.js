@@ -1,5 +1,6 @@
 const hs = require('../ingest/hyperspell');
 const nia = require('../ingest/nia');
+const firmHistory = require('../ingest/firm-history');
 const ctx = require('../context');
 const {
   llmArtifact,
@@ -35,12 +36,20 @@ async function run({ company } = {}) {
   const citations = mergeCitations(companies, news, people, tweets, blogs, research);
   const niaTotal = citations.length;
 
+  // Firm deal-history: surface past evaluations of similar companies so the
+  // "FROM FIRM MEMORY" block isn't empty.
+  const priorDeals = firmHistory.findSimilarDeals({ company: co, limit: 3 });
+  const priorBlock = priorDeals.length
+    ? priorDeals.map((p) => `- ${p.company} (${p.year}, ${p.stage}) — ${p.outcome}${p.return ? ` · ${p.return}` : ''} · ${p.notes}`).join('\n')
+    : '(no comparable firm deals in history)';
+
   const prompt = [
     `COMPANY: ${co}`,
     `HYPERSPELL CONTEXT — ${stats.total} memories (${stats.by_scope.partner} personal · ${stats.by_scope.firm} firm)`,
     `dig-areas (${thesis.length}):`, summarizeHits(thesis),
     `deck (${deck.length}):`, summarizeHits(deck),
     `firm context (${firmCtx.length}):`, summarizeHits(firmCtx),
+    `firm deal history (${priorDeals.length}):`, priorBlock,
     `world hits — company ${(companies || []).length} · news ${(news || []).length} · people ${(people || []).length} · tweets ${(tweets || []).length} · blogs ${(blogs || []).length} · research ${(research || []).length}`,
     'Write the sourcing sheet now.',
   ].join('\n');
