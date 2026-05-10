@@ -440,9 +440,9 @@ const demoNozomioState = {
 
 const _slugFor = (id, type) => (window.nozomioArtifactSlug ? window.nozomioArtifactSlug(id, type) : `${id}-${type}`);
 const NOZOMIO_DECK_SUGGESTIONS = [
-  { id: 'nozomio-memo', label: 'ic memo', artifactId: 'n7', name: 'Nozomio · ic memo', route: '/artifact/' + _slugFor('n7', 'Investment Memo'), delayMs: 2200 },
-  { id: 'nozomio-meeting-prep', label: 'meeting prep doc', artifactId: 'n10', name: 'Nozomio · meeting prep doc', route: '/artifact/' + _slugFor('n10', 'Meeting Prep'), delayMs: 1800 },
-  { id: 'nozomio-email', label: 'pass / follow-up email', artifactId: 'n8', name: 'Nozomio · pass email', route: '/artifact/' + _slugFor('n8', 'Pass Email'), delayMs: 120 },
+  { id: 'nozomio-memo', label: 'ic memo', artifactId: 'n7', name: 'Nozomio · ic memo', route: '/artifact/' + _slugFor('n7', 'Investment Memo'), delayMs: 12000 },
+  { id: 'nozomio-meeting-prep', label: 'meeting prep doc', artifactId: 'n10', name: 'Nozomio · meeting prep doc', route: '/artifact/' + _slugFor('n10', 'Meeting Prep'), delayMs: 6000 },
+  { id: 'nozomio-email', label: 'pass / follow-up email', artifactId: 'n8', name: 'Nozomio · pass email', route: '/artifact/' + _slugFor('n8', 'Pass Email'), delayMs: 2500 },
 ];
 
 function clearDemoTimers() {

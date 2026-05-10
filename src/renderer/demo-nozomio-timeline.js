@@ -17,9 +17,9 @@ window.NOZOMIO_DEMO_TIMELINES = {
       atMs: 2500,
       action: 'suggestions',
       suggestions: [
-        { id: 'arlan-founder-background', label: "arlan's founder background", artifactId: 'n4', name: 'Arlan · founder background', route: '/artifact/' + slugFor('n4', 'Founder Background'), delayMs: 1200 },
-        { id: 'arlan-network-paths', label: 'people who know arlan', artifactId: 'n11', name: 'Arlan · network paths', route: '/artifact/' + slugFor('n11', 'Network Map'), delayMs: 1200 },
-        { id: 'nozomio-source-sheet', label: 'source sheet on nozomio', artifactId: 'n6', name: 'Nozomio · source sheet from LinkedIn', route: '/artifact/' + slugFor('n6', 'Sourcing Sheet'), delayMs: 2200 },
+        { id: 'arlan-founder-background', label: "arlan's founder background", artifactId: 'n4', name: 'Arlan · founder background', route: '/artifact/' + slugFor('n4', 'Founder Background'), delayMs: 4000 },
+        { id: 'arlan-network-paths', label: 'people who know arlan', artifactId: 'n11', name: 'Arlan · network paths', route: '/artifact/' + slugFor('n11', 'Network Map'), delayMs: 3500 },
+        { id: 'nozomio-source-sheet', label: 'source sheet on nozomio', artifactId: 'n6', name: 'Nozomio · source sheet from LinkedIn', route: '/artifact/' + slugFor('n6', 'Sourcing Sheet'), delayMs: 7000 },
       ],
     },
   ],
