@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
-import { Artifact, artifacts as ALL } from '../../mock/data';
+import { Artifact } from '../../mock/data';
 import ArtifactCard from '../ArtifactCard';
+import { useArtifacts } from '../../lib/use-artifacts';
 import { cn } from '@/lib/utils';
 
 const TYPE_ORDER = [
@@ -16,6 +17,7 @@ const TYPE_ORDER = [
 type Props = { onOpen: (a: Artifact) => void };
 
 export default function FirmArtifacts({ onOpen }: Props) {
+  const ALL = useArtifacts();
   const grouped = useMemo(() => {
     const map = new Map<string, Artifact[]>();
     for (const a of ALL) {
@@ -26,7 +28,7 @@ export default function FirmArtifacts({ onOpen }: Props) {
     return Array.from(map.entries()).sort(
       ([a], [b]) => TYPE_ORDER.indexOf(a) - TYPE_ORDER.indexOf(b),
     );
-  }, []);
+  }, [ALL]);
 
   const [active, setActive] = useState<string>('all');
   const types = ['all', ...grouped.map(([t]) => t)];

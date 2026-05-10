@@ -5,10 +5,15 @@ const hs = require('../ingest/hyperspell');
 const ctx = require('../context');
 const MemoryRepo = require('../repos/memory');
 const registry = require('../actions/registry');
+const { parseScreenSignal } = require('./vision-signal');
+const { scoreAction } = require('./vision-rank');
+const beliefsRepo = require('../repos/beliefs');
 
 const DEBOUNCE_MS = 1500;
-const recentMems = [];           // recent Memory rows (newest at end)
 const RECENT_KEEP = 30;
+const VISION_WEIGHT = 0.6;       // blended weight on screen-relevance score
+const BEHAVIORAL_WEIGHT = 0.4;   // blended weight on past click/ignore signal
+const recentMems = [];           // recent Memory rows (newest at end)
 
 let lastRunAt = 0;
 let pendingTimer = null;
@@ -40,35 +45,68 @@ function extractFocus(text) {
 }
 
 async function pickActions(context, { proactive = false } = {}) {
-  const companyHint = extractCompany(context) || 'this company';
+  const signal = parseScreenSignal(lastScreen);
+  const companyHint = signal.entity || extractCompany(context) || 'this company';
   const allActions = registry.list();
-  // Probe Hyperspell for past click/ignore patterns per action_id.
-  const ranked = await Promise.all(
+
+  // Behavioral signal: prefer the persisted ActionPreferenceAgent belief
+  // (sigmoid over learned click-net), else fall back to the Hyperspell
+  // click/ignore probe so cold-start behavior is unchanged.
+  let beliefByAction = new Map();
+  try {
+    const rows = beliefsRepo.list({ agent_id: 'action-preference' }) || [];
+    for (const r of rows) beliefByAction.set(r.topic, r.score);
+  } catch {}
+  const haveBeliefs = beliefByAction.size > 0;
+
+  const probed = await Promise.all(
     allActions.map(async (a) => {
+      const fromBelief = beliefByAction.get(a.id);
+      if (fromBelief != null) return { action: a, raw: fromBelief, source: 'belief' };
+      if (haveBeliefs) return { action: a, raw: 0, source: 'belief' };
       try {
         const probe = await hs.search({
           scope: 'partner', partner: ctx.ME, firm: ctx.FIRM,
           query: `user clicked ${a.id}`, k: 5, halfLifeHours: 168,
           sources: ['vault'],
         });
-        const score = probe.reduce((s, h) => s + (h.adjusted || 0), 0);
-        return { action: a, score };
+        const raw = probe.reduce((s, h) => s + (h.adjusted || 0), 0);
+        return { action: a, raw, source: 'hs' };
       } catch {
-        return { action: a, score: 0 };
+        return { action: a, raw: 0, source: 'hs' };
       }
     })
   );
-  ranked.sort((a, b) => b.score - a.score || Math.random() - 0.5);
+
+  // Normalize behavioral to [0,1] across this batch so it composes with vision.
+  const maxRaw = probed.reduce((m, p) => Math.max(m, p.raw), 0);
+  const ranked = probed.map(({ action, raw, source }) => {
+    const behavioral = source === 'belief'
+      ? Math.max(0, Math.min(1, raw))            // sigmoid score, already in [0,1]
+      : (maxRaw > 0 ? raw / maxRaw : 0);
+    const vision = scoreAction(action, signal);
+    const final = VISION_WEIGHT * vision + BEHAVIORAL_WEIGHT * behavioral;
+    return { action, behavioral, vision, final };
+  });
+  ranked.sort((a, b) => b.final - a.final || Math.random() - 0.5);
+
   const focus = extractFocus(lastScreen);
-  const reasonBase = focus ? `because you're on ${focus}` : 'based on recent activity';
-  return ranked.slice(0, 3).map(({ action }) => ({
+  const visionReason = signal.docType !== 'other' && signal.entity
+    ? `because you're on a ${signal.docType.replace('_', ' ')} for ${signal.entity}`
+    : signal.docType !== 'other'
+    ? `because you're on a ${signal.docType.replace('_', ' ')}`
+    : focus ? `because you're on ${focus}` : 'based on recent activity';
+
+  return ranked.slice(0, 3).map(({ action, vision, behavioral, final }) => ({
     id: randomUUID(),
     action_id: action.id,
     label: action.label.replace('{company}', companyHint),
-    reason: reasonBase,
+    reason: visionReason,
     company_hint: companyHint,
     proactive,
     created_at: Date.now(),
+    screen_signal: { docType: signal.docType, entity: signal.entity, intents: signal.intents },
+    scores: { vision, behavioral, final },
   }));
 }
 
@@ -143,7 +181,13 @@ function clickSuggestion(id) {
     kind: 'click',
     text: `clicked: ${s.action_id} on ${s.company_hint}`,
     valence: 1,
-    meta: { suggestion_id: s.id, action_id: s.action_id, company_hint: s.company_hint },
+    meta: {
+      suggestion_id: s.id,
+      action_id: s.action_id,
+      company_hint: s.company_hint,
+      screen_signal: s.screen_signal,
+      scores: s.scores,
+    },
   });
   // Sibling suggestions become ignores (the user picked X over Y, Z)
   for (const sib of lastSuggestions) {
@@ -158,7 +202,13 @@ function ignoreSuggestion(s) {
     kind: 'ignore',
     text: `ignored: ${s.action_id} on ${s.company_hint}`,
     valence: -1,
-    meta: { suggestion_id: s.id, action_id: s.action_id, company_hint: s.company_hint },
+    meta: {
+      suggestion_id: s.id,
+      action_id: s.action_id,
+      company_hint: s.company_hint,
+      screen_signal: s.screen_signal,
+      scores: s.scores,
+    },
   });
 }
 
@@ -172,9 +222,10 @@ function start() {
 }
 
 function getLastSuggestions() { return lastSuggestions; }
+function getLastScreen() { return lastScreen; }
 
 module.exports = {
-  start, clickSuggestion, getLastSuggestions, extractCompany,
+  start, clickSuggestion, getLastSuggestions, getLastScreen, extractCompany,
   bumpFromScreen, pause: pauseEngine, resume: resumeEngine,
   runProactive,
 };

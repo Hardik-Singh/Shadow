@@ -1,5 +1,6 @@
-import { Artifact, artifacts as ALL } from '../mock/data';
+import { Artifact } from '../mock/data';
 import ArtifactCard from './ArtifactCard';
+import { useArtifacts } from '../lib/use-artifacts';
 
 type Props = {
   onOpen: (a: Artifact) => void;
@@ -7,8 +8,10 @@ type Props = {
 };
 
 export default function MyArtifacts({ onOpen, pending = [] }: Props) {
+  const ALL = useArtifacts();
   const list = ALL.filter((a) => a.authorId === 'me');
-  const total = list.length + pending.length;
+  const pendingOnly = pending.filter((a) => !list.some((x) => x.id === a.id));
+  const total = list.length + pendingOnly.length;
 
   return (
     <section>
@@ -22,7 +25,7 @@ export default function MyArtifacts({ onOpen, pending = [] }: Props) {
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-        {pending.map((a) => (
+        {pendingOnly.map((a) => (
           <ArtifactCard key={a.id} artifact={a} onOpen={onOpen} />
         ))}
         {list.map((a) => (

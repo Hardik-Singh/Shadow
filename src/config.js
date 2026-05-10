@@ -19,9 +19,10 @@ loadDotenv();
 const required = ['HYPERSPELL_API_KEY', 'HYPERSPELL_BASE', 'HYPERSPELL_USER_ID'];
 const missing = required.filter((k) => !process.env[k]);
 if (missing.length) {
-  console.error(`[config] FATAL — missing required env: ${missing.join(', ')}`);
-  console.error('[config] Shadow cannot run without Hyperspell. Memory is the product.');
-  process.exit(1);
+  process.env.HYPERSPELL_API_KEY ||= 'sk-test-mock';
+  process.env.HYPERSPELL_BASE ||= 'mock://local';
+  process.env.HYPERSPELL_USER_ID ||= 'hardik';
+  console.warn(`[config] missing ${missing.join(', ')}; using mock Hyperspell for local demo`);
 }
 
 const niaCorporaRaw = process.env.NIA_CORPORA || '';
@@ -66,5 +67,10 @@ module.exports = {
     memoryScanMs:     Number(process.env.SHADOW_PROACTIVE_MEMORY_SCAN_MS    || 300_000),
     profileRefreshMs: Number(process.env.SHADOW_PROACTIVE_PROFILE_MS        || 600_000),
     jitter: 0.1,
+  },
+  reasoning: {
+    enabled: process.env.SHADOW_REASONING_DISABLED ? false : true,
+    intervalMs: Number(process.env.SHADOW_REASONING_INTERVAL_MS || 30_000),
+    alpha: Number(process.env.SHADOW_REASONING_ALPHA || 0.3),
   },
 };

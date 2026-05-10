@@ -46,7 +46,7 @@ export default function FirmBrainTab({ focusedDealId }: Props) {
 
   return (
     <div className="mx-auto flex max-w-[1440px]">
-      <FirmSidebar section={section} onChange={changeSection} />
+      <FirmSidebar section={section} onChange={changeSection} onOpenDeal={openDeal} />
 
       <main className="flex-1 px-8 py-10">
         {section === 'pipeline'  && <Pipeline onOpenDeal={openDeal} />}

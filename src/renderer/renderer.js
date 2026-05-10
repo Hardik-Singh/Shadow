@@ -14,8 +14,6 @@ const writesEl = document.getElementById('writes');
 const thoughtsEl = document.getElementById('thoughts');
 const pillsEl = document.getElementById('pills');
 const artifactsEl = document.getElementById('artifacts');
-const modeBtn = document.getElementById('mode');
-const modeLabel = document.getElementById('mode-label');
 const promptForm = document.getElementById('prompt-form');
 const promptInput = document.getElementById('prompt');
 
@@ -197,17 +195,6 @@ function fmtSession(ms) {
   return `${m}:${String(ss).padStart(2, '0')}`;
 }
 setInterval(() => { sessionEl.textContent = fmtSession(Date.now() - sessionStart); }, 1000);
-
-// ===== MODES =====
-// Mode is just a label/context hint forwarded to main. Suggestions and
-// artifacts come from the backend (suggest engine + action handlers); no
-// hardcoded per-mode defaults live in the renderer.
-const MODES = ['VC', 'HF', 'PE', 'IB'];
-let modeIdx = 0;
-
-function renderModeLabel() {
-  modeLabel.textContent = MODES[modeIdx];
-}
 
 function renderEmptySuggestions() {
   pillsEl.innerHTML = '<div class="pills-empty">listening for context…</div>';
@@ -413,6 +400,7 @@ try {
 // ===== MEMORY WRITES (driven by main process: distilled signals from SQLite +
 // silent Hyperspell mirror for cross-session firm brain) =====
 function pushWrite(verb, text, opts) {
+  if (!writesEl) return;
   const li = document.createElement('li');
   if (opts && opts.historical) li.classList.add('historical');
   li.innerHTML = `<span class="verb">${verb}:</span>${text}`;
@@ -446,22 +434,43 @@ function pushThought(text, sources) {
 if (window.shadow && window.shadow.onThought) {
   window.shadow.onThought((t) => {
     if (!t) return;
-    if (typeof t === 'string') pushThought(t);
-    else if (t.text) {
-      pushThought((t.proactive ? '💭 ' : '') + t.text, t.sources);
+    if (typeof t === 'string') return;
+    if (t.text && t.source === 'vision') {
+      pushThought(t.text, t.sources);
       if (t.proactive && thoughtsEl.firstChild) thoughtsEl.firstChild.classList.add('proactive');
     }
   });
 }
 
 // ===== WATCHING (real signals only — rows hidden until first real text) =====
+let seeingBucket = '';
+
+function classifySeeing(text) {
+  const s = String(text || '').toLowerCase();
+  if (/(how shadow sees you|shadow partner profile)/.test(s)) return 'profile';
+  if (/(linkedin|arlan|rakhmetzhanov)/.test(s) && !/(deck|\.pdf|slide)/.test(s)) return 'linkedin-arlan';
+  if (/(nozomio|arlan|rakhmetzhanov)/.test(s) && /(deck|\.pdf|slide)/.test(s)) return 'deck-nozomio';
+  if (/(nozomio|team verdicts|partner verdicts|firm verdict|against|for)/.test(s)) return 'firm-nozomio';
+  return '';
+}
+
+function setSeeing(text, opts = {}) {
+  const bucket = classifySeeing(text);
+  if (!opts.force) {
+    if (!bucket) return;
+    if (bucket === seeingBucket) return;
+  }
+  seeingBucket = bucket || seeingBucket;
+  seeingEl.textContent = text;
+  seeingRow.classList.remove('hidden');
+  seeingEl.classList.add('flash');
+  setTimeout(() => seeingEl.classList.remove('flash'), 600);
+}
+
 if (window.shadow) {
   window.shadow.onSeeing((t) => {
     if (!t) return;
-    seeingEl.textContent = t;
-    seeingRow.classList.remove('hidden');
-    seeingEl.classList.add('flash');
-    setTimeout(() => seeingEl.classList.remove('flash'), 600);
+    setSeeing(t);
   });
   window.shadow.onHearing((t) => {
     if (!t) return;
@@ -532,8 +541,18 @@ function openDashboard(qs) {
 function addArtifact(a) {
   const li = document.createElement('li');
   li.className = 'new clickable';
-  li.title = 'open in dashboard';
-  li.innerHTML = `<span>${a.name}</span><span class="tag">${a.tag || ''}</span>`;
+  li.title = 'open in firm brain';
+  const [primary, secondary] = String(a.name || 'artifact').split(' · ');
+  li.innerHTML = `
+    <div class="artifact-main">
+      <span class="artifact-dot"></span>
+      <span class="artifact-copy">
+        <span class="artifact-title">${escapeHtml(primary || 'artifact')}</span>
+        <span class="artifact-subtitle">${escapeHtml(secondary || 'firm brain')}</span>
+      </span>
+    </div>
+    <span class="tag">${escapeHtml(a.tag || 'new')}</span>
+  `;
   li.addEventListener('click', () => openDashboard(a.route || ''));
   const empty = artifactsEl.querySelector('.empty');
   if (empty) empty.remove();
@@ -548,6 +567,16 @@ promptForm.addEventListener('submit', (e) => {
   e.preventDefault();
   const v = promptInput.value.trim();
   if (!v) return;
+  pushThought(`you: ${v}`);
+  if (demoNozomioState.awaitingDeckReaction && /\b(like|liked|love|interesting|good|yes|bullish)\b/i.test(v)) {
+    demoNozomioState.awaitingDeckReaction = false;
+    pushThought('got it. i can turn that read into the three useful artifacts.');
+    renderDemoPills(NOZOMIO_DECK_SUGGESTIONS);
+    pushWrite('ready', 'ic memo + meeting prep + pass email queued from deck reaction');
+    promptInput.value = '';
+    promptInput.placeholder = 'ask shadow...';
+    return;
+  }
   pushWrite('focus', v);
   if (window.shadow && window.shadow.setFocus) window.shadow.setFocus(v);
   if (window.shadow && window.shadow.ask) window.shadow.ask(v);
@@ -563,8 +592,106 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
+// ===== NOZOMIO STAGE DEMO =====
+const demoNozomioState = {
+  timers: [],
+  firedStages: new Set(),
+  artifacts: new Set(),
+  awaitingDeckReaction: false,
+};
+
+const _slugFor = (id, type) => (window.nozomioArtifactSlug ? window.nozomioArtifactSlug(id, type) : `${id}-${type}`);
+const NOZOMIO_DECK_SUGGESTIONS = [
+  { id: 'nozomio-memo', label: 'ic memo', artifactId: 'n7', name: 'Nozomio · ic memo', route: '/artifact/' + _slugFor('n7', 'Investment Memo'), delayMs: 2200 },
+  { id: 'nozomio-meeting-prep', label: 'meeting prep doc', artifactId: 'n10', name: 'Nozomio · meeting prep doc', route: '/artifact/' + _slugFor('n10', 'Meeting Prep'), delayMs: 1800 },
+  { id: 'nozomio-email', label: 'pass / follow-up email', artifactId: 'n8', name: 'Nozomio · pass email', route: '/artifact/' + _slugFor('n8', 'Pass Email'), delayMs: 120 },
+];
+
+function clearDemoTimers() {
+  for (const t of demoNozomioState.timers) clearTimeout(t);
+  demoNozomioState.timers = [];
+}
+
+function addDemoArtifact({ artifactId, name, tag, route }) {
+  if (!artifactId || demoNozomioState.artifacts.has(artifactId)) return;
+  demoNozomioState.artifacts.add(artifactId);
+  addArtifact({ name, tag: tag || 'NEW', route: route || `?artifact=${encodeURIComponent(artifactId)}` });
+}
+
+function renderDemoPills(suggestions) {
+  pillsEl.innerHTML = suggestions
+    .map((s) => `<button data-demo-id="${escapeHtml(s.id)}"><span class="pill-text"><span class="pill-label">${escapeHtml(s.label)}</span></span><span class="arrow">→</span></button>`)
+    .join('');
+
+  pillsEl.querySelectorAll('button[data-demo-id]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const item = suggestions.find((s) => s.id === btn.dataset.demoId);
+      if (!item) return;
+      btn.disabled = true;
+      btn.classList.add('loading');
+      const labelEl = btn.querySelector('.pill-label');
+      if (labelEl) labelEl.textContent = 'generating...';
+      pushWrite('action', `clicked "${item.label}"`);
+      setTimeout(() => {
+        btn.classList.remove('loading');
+        if (labelEl) labelEl.textContent = 'created';
+        addDemoArtifact({
+          artifactId: item.artifactId,
+          name: item.name,
+          route: item.route,
+        });
+        pushWrite('artifact', `${item.name.replace('Nozomio · ', '')} · saved`);
+        if (item.artifactId === 'n7') renderNozomioFirmPill();
+      }, item.delayMs == null ? 1800 : item.delayMs);
+    });
+  });
+}
+
+function renderNozomioFirmPill() {
+  const btn = document.createElement('button');
+  btn.dataset.demoId = 'nozomio-firm';
+  btn.innerHTML = '<span class="pill-text"><span class="pill-label">get shadows opinions</span><span class="reason">open firm vote</span></span><span class="arrow">→</span>';
+  btn.addEventListener('click', () => openDashboard('/firm/nozomio'));
+  pillsEl.appendChild(btn);
+}
+
+function applyNozomioDemoEvent(ev) {
+  if (!ev) return;
+  if (ev.action === 'seeing') {
+    setSeeing(ev.text, { force: true });
+  }
+  if (ev.action === 'chat' || ev.action === 'thought') pushThought(ev.text);
+  if (ev.action === 'awaitDeckReaction') demoNozomioState.awaitingDeckReaction = true;
+  if (ev.action === 'write') pushWrite(ev.verb || 'note', ev.text);
+  if (ev.action === 'artifact') addDemoArtifact({
+    artifactId: ev.id,
+    name: ev.name,
+    tag: ev.tag,
+    route: ev.route,
+  });
+  if (ev.action === 'suggestions') renderDemoPills(ev.suggestions || []);
+}
+
+function startNozomioDemoStage(stage) {
+  const timelines = window.NOZOMIO_DEMO_TIMELINES || {};
+  const events = timelines[`stage${stage}`];
+  if (!Array.isArray(events) || demoNozomioState.firedStages.has(stage)) return;
+  demoNozomioState.firedStages.add(stage);
+  clearDemoTimers();
+  signalEl.textContent = `watching nozomio · ${stage === 1 ? 'linkedin' : 'deck'}`;
+  events.forEach((ev) => {
+    const t = setTimeout(() => applyNozomioDemoEvent(ev), ev.atMs || 0);
+    demoNozomioState.timers.push(t);
+  });
+}
+
+if (window.shadow && window.shadow.onNozomioDemo) {
+  window.shadow.onNozomioDemo((payload) => startNozomioDemoStage(payload && payload.stage));
+}
+
 if (window.shadow && window.shadow.onSuggestions) {
   window.shadow.onSuggestions((list) => {
+    if (!window.SHADOW_SHOW_REAL_SUGGESTIONS) return;
     if (!Array.isArray(list) || list.length === 0) {
       renderEmptySuggestions();
       return;
@@ -610,7 +737,9 @@ if (window.shadow && window.shadow.onArtifact) {
       market_check: 'Market check',
       flag: 'Flagged',
     };
-    addArtifact({ name: `${co} · ${labels[a.kind] || a.kind}`, tag: 'NEW' });
+    const artifactId = a.data && a.data.artifactId;
+    const route = artifactId ? `?artifact=${encodeURIComponent(artifactId)}` : '';
+    addArtifact({ name: `${co} · ${labels[a.kind] || a.kind}`, tag: 'NEW', route });
     const stats = a.data && a.data.sources;
     if (stats && stats.hyperspell_total != null) {
       pushWrite('synth', `${labels[a.kind] || a.kind}: drew ${stats.hyperspell_total} memories from hyperspell` + (stats.nia_total ? ` + ${stats.nia_total} from nia` : ''));

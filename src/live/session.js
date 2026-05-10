@@ -7,7 +7,7 @@ const WebSocket = require('ws');
 
 const HOST = 'generativelanguage.googleapis.com';
 const PATH = '/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent';
-const MODEL = 'models/gemini-2.5-flash-live-preview';
+const MODEL = process.env.SHADOW_LIVE_MODEL || 'models/gemini-3.1-flash-live-preview';
 
 const SYSTEM_INSTRUCTION = [
   'You are Shadow — an always-on observer for a venture capital partner.',

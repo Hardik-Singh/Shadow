@@ -1,17 +1,19 @@
 const hs = require('../ingest/hyperspell');
 const nia = require('../ingest/nia');
 const ctx = require('../context');
-const { llmJson, summarizeHits, hsContextStats, writeBack } = require('./_synth');
+const {
+  llmArtifact,
+  summarizeHits,
+  hsContextStats,
+  mergeCitations,
+  buildArtifact,
+  writeBack,
+} = require('./_synth');
 
 const SYSTEM = `You write IC (investment committee) memos in the partner's voice.
 - Every BEHAVIORAL CONTEXT line is a real memory pulled from Hyperspell — echo phrases the partner actually said.
-- Use WORLD FACTS for company/founder/market data. Cite nothing else.
-- Output strict JSON only, no preamble. Schema:
-{ "recommendation": "invest" | "pass" | "investigate",
-  "conviction": "low" | "medium" | "medium-high" | "high",
-  "reasons": [string],
-  "risks": [string],
-  "questions": [string] }`;
+- Use WORLD FACTS / CITATIONS for company, founder, and market data; cite each external claim inline as <sup><a href="#cite-N">N</a></sup>.
+- The body must include sections: <h2>Read</h2>, <h2>Reasons</h2><ul>…</ul>, <h2>Risks</h2><ul>…</ul>, <h2>Open Questions</h2><ul>…</ul>.`;
 
 async function run({ company } = {}) {
   const co = company || 'this company';
@@ -19,7 +21,6 @@ async function run({ company } = {}) {
   const firm = ctx.FIRM;
   const connected = await hs.listConnectedSources(partner);
 
-  // Hyperspell — partner vault for personal voice.
   const [voiceOnCo, thesis, deckChunks, firmPriorMemos] = await Promise.all([
     hs.search({
       scope: 'partner', partner, firm,
@@ -39,24 +40,30 @@ async function run({ company } = {}) {
       sources: ['vault'],
       k: 12, halfLifeHours: 24,
     }),
-    // Firm vault — what has the firm previously said/written about this space?
     hs.search({
       scope: 'firm', partner, firm,
       query: `${co} comparable deals firm thesis`,
       sources: ['vault'],
-      k: 8, halfLifeHours: 720 * 12, // 12-month half-life — institutional memory decays slowly
+      k: 8, halfLifeHours: 720 * 12,
     }),
   ]);
 
-  // Nia — world knowledge.
-  const [companies, news, people] = await Promise.all([
-    nia.web ? nia.web(`${co} comparable companies`, 'company') : nia.multiQuery([{ corpus: 'companies', text: co }]).then((r) => r[0] || []),
-    nia.web ? nia.web(`${co} fundraise news`, 'news') : nia.multiQuery([{ corpus: 'news', text: co }]).then((r) => r[0] || []),
-    nia.web ? nia.web(`${co} founders`, 'github') : nia.multiQuery([{ corpus: 'people', text: `${co} founders` }]).then((r) => r[0] || []),
+  // Wide Nia fan-out — every public surface that might inform an IC decision.
+  // All in parallel; per-call 8s timeout in the adapter caps total latency.
+  const [companies, news, github, tweets, blogs, research, pdfs, coinvestors] = await Promise.all([
+    nia.web(`${co} comparable companies`, 'company'),
+    nia.web(`${co} fundraise news`, 'news'),
+    nia.web(`${co} founders`, 'github'),
+    nia.web(`${co} founders launch`, 'tweet'),
+    nia.web(`${co} founder essay writing`, 'blog'),
+    nia.web(`${co} market research analyst report`, 'research'),
+    nia.web(`${co} sector market size whitepaper`, 'pdf'),
+    nia.web(`${co} round investors lead`, 'news'),
   ]);
 
   const stats = hsContextStats([voiceOnCo, thesis, deckChunks, firmPriorMemos]);
-  const niaTotal = (companies || []).length + (news || []).length + (people || []).length;
+  const citations = mergeCitations(companies, news, github, tweets, blogs, research, pdfs, coinvestors);
+  const niaTotal = citations.length;
 
   const userPrompt = [
     `COMPANY: ${co}`,
@@ -75,37 +82,29 @@ async function run({ company } = {}) {
     `FIRM MEMORY — prior firm-level context on space (${firmPriorMemos.length}):`,
     summarizeHits(firmPriorMemos, 'firm'),
     '',
-    `WORLD FACTS — company (${(companies || []).length}):`,
-    summarizeHits(companies, 'company'),
-    `WORLD FACTS — news (${(news || []).length}):`,
-    summarizeHits(news, 'news'),
-    `WORLD FACTS — people (${(people || []).length}):`,
-    summarizeHits(people, 'people'),
+    `WORLD FACTS — company ${(companies || []).length} · news ${(news || []).length} · github ${(github || []).length} · tweets ${(tweets || []).length} · blogs ${(blogs || []).length} · research ${(research || []).length} · pdfs ${(pdfs || []).length} · co-investors ${(coinvestors || []).length}. See CITATIONS list below.`,
     '',
-    'Write the memo now. JSON only.',
+    'Write the IC memo now.',
   ].join('\n');
 
-  let memo;
-  try { memo = await llmJson({ system: SYSTEM, user: userPrompt }); }
-  catch (err) { memo = { _error: err.message }; }
+  let llmOut;
+  try { llmOut = await llmArtifact({ system: SYSTEM, user: userPrompt, citations }); }
+  catch (err) { llmOut = { _error: err.message }; }
 
-  const data = {
-    company: co,
-    memo,
-    sources: {
-      hyperspell_total: stats.total,
-      hyperspell_by_scope: stats.by_scope,
-      hyperspell_by_kind: stats.by_kind,
-      nia_total: niaTotal,
-    },
-    flags: niaTotal === 0 ? ['limited external data'] : [],
-    prompt_preview: userPrompt.slice(0, 600), // for the demo card debug subtitle
-  };
+  const artifact = buildArtifact({ kind: 'ic_memo', company: co, llmOut, citations, stats, niaTotal });
 
-  if (!memo._error && !memo._stub) {
-    writeBack({ kind: 'ic_memo', company: co, text: JSON.stringify(memo, null, 2) });
+  if (llmOut && !llmOut._error && !llmOut._stub) {
+    writeBack({ kind: 'ic_memo', company: co, text: llmOut.body_html || llmOut.read || '' });
   }
-  return { kind: 'ic_memo', data };
+  return { kind: 'ic_memo', data: { company: co, artifactId: artifact.id, sources: { hyperspell_total: stats.total, hyperspell_by_scope: stats.by_scope, hyperspell_by_kind: stats.by_kind, nia_total: niaTotal }, flags: artifact.flags } };
 }
 
-module.exports = { id: 'ic_memo', label: 'generate IC memo for {company}', run };
+module.exports = {
+  id: 'ic_memo',
+  label: 'generate IC memo for {company}',
+  triggers: ['pitch deck', 'memo', 'investment thesis', 'dataroom', 'company overview', 'deck'],
+  docTypes: ['pitch_deck', 'doc'],
+  intents: ['evaluate', 'write', 'decide'],
+  entityTypes: ['company'],
+  run,
+};

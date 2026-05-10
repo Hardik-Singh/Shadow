@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Artifact, artifacts, Deal, teammateById } from '../../mock/data';
+import { Artifact, Deal, teammateById } from '../../mock/data';
+import { useArtifacts } from '../../lib/use-artifacts';
 import { Avatar } from '../Avatars';
 import VerdictPill from '../VerdictPill';
 import SourceChips from '../SourceChips';
@@ -7,23 +8,17 @@ import TeammateShadow from './TeammateShadow';
 import FirmVerdict from './FirmVerdict';
 import ArtifactDetail from '../ArtifactDetail';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { relationsForDeal } from '@/lib/relations';
 
 export default function DealDetail({ deal }: { deal: Deal }) {
   const [open, setOpen] = useState<Artifact | null>(null);
+  const artifacts = useArtifacts();
 
   const artifact = deal.yourArtifactId
     ? artifacts.find((a) => a.id === deal.yourArtifactId)
     : undefined;
-
-  const seen = new Set<string>();
-  const related: Artifact[] = [];
-  for (const a of artifacts) {
-    if (a.id === deal.yourArtifactId) continue;
-    if (a.company !== deal.company && !deal.relatedArtifactIds.includes(a.id)) continue;
-    if (seen.has(a.id)) continue;
-    seen.add(a.id);
-    related.push(a);
-  }
+  const relations = relationsForDeal(deal, artifacts);
+  const related = relations.artifacts.filter((a) => a.id !== deal.yourArtifactId);
 
   return (
     <div className="flex flex-col gap-5">
@@ -32,6 +27,12 @@ export default function DealDetail({ deal }: { deal: Deal }) {
         <p className="mt-1 text-[13px] text-muted-foreground">
           {deal.thesis} · {deal.ask}
         </p>
+        <div className="mt-3 grid grid-cols-4 gap-2">
+          <RelationStat label="artifacts" value={relations.counts.artifacts} />
+          <RelationStat label="founders" value={relations.counts.founders} />
+          <RelationStat label="meetings" value={relations.counts.meetings} />
+          <RelationStat label="shadows" value={relations.counts.teammates} />
+        </div>
       </header>
 
       <Tabs defaultValue="overview">
@@ -106,6 +107,17 @@ export default function DealDetail({ deal }: { deal: Deal }) {
       </Tabs>
 
       <ArtifactDetail artifact={open} onClose={() => setOpen(null)} />
+    </div>
+  );
+}
+
+function RelationStat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-lg border border-border bg-secondary/30 px-3 py-2">
+      <div className="font-mono text-[15px] leading-none tabular-nums">{value}</div>
+      <div className="mt-1 text-[10.5px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+        {label}
+      </div>
     </div>
   );
 }

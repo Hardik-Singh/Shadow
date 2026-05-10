@@ -1,232 +1,242 @@
-# Demo Script — Shadow sourcing Nozomio (3 min)
+# Demo Script v2 — Shadow sourcing Nozomio (3 min)
 
-## Context
+## What this demo shows, in one sentence
 
-You need a deterministic ~3-minute demo for Shadow with a real live case: a VC sourcing **Nozomio** (YC S25), founder **Arlan Rakhmetzhanov**. Goal of the demo is to show three things in order:
+Shadow watches you research a real founder live, surfaces thoughts + pulls together a source sheet with no clicks, then once you open his pitch deck offers to draft an investment memo and intro email *in your voice* — and finally, on the memo, lets you instantly poll the rest of the firm's shadows and chat with any of them in their own voice.
 
-1. **Live behavioral capture** — Shadow watching you read Arlan's YC profile, surfacing a *unique* insight that feels like a smart associate did it (not generic summarization).
-2. **One-click analyst work** — sourcing sheet → founder breakdown, with auto-attached Slack threads + a teammate's prior memo on the same space.
-3. **Firm brain** — other partners' shadows (with distinct behavioral tendencies) reviewing the deal and disagreeing in-character.
-
-The README already has a generic 3-act demo. This plan rewrites it around Nozomio specifically and lists every piece of canned data you need to pre-seed before stage. Hardcoded for now; we can soft-code later.
+Real case: **Nozomio (YC S25), founder Arlan Rakhmetzhanov**.
 
 ---
 
-## The real-world facts to anchor on
+## Real-world facts to anchor on
 
-These are public and verifiable — use them verbatim so an audience member googling along gets the same data:
+Public + verifiable — use verbatim:
 
 - **Company**: Nozomio · YC S25 · SF · ~3 employees · founded 2025
-- **Product**: Nia — search/index API giving AI coding agents live context (docs, research papers, datasets, private repos) so they don't rely on stale training data
+- **Product**: Nia — search/index API giving AI coding agents live context (docs, papers, datasets, private repos)
 - **Round**: $6.2M seed · CRV led · BoxGroup, LocalGlobe, + angels incl. Paul Graham, Thomas Wolf (HuggingFace)
-- **Founder**: Arlan Rakhmetzhanov · 18 · solo founder · Kazakhstan immigrant · dropped out 11th grade · prior Stanford research (Caltech prof) on *Cobra*, a static-analysis tool for source-code defects · Forbes 30u30 · prior startup at 15 hit 20k users
-- **Sourceable signals**: GitHub `arlanrakh`, personal site arlanrakh.com, recent YouTube interview, recent press in startupsunion / digitrendz / Yahoo Finance pitch-deck roundup
+- **Founder**: Arlan Rakhmetzhanov · 18 · solo founder · Kazakhstan immigrant · dropped out 11th grade · prior Stanford research (Caltech prof) on *Cobra* (static-analysis tool) · Forbes 30u30 · prior startup at 15 hit 20k users
+- **Sourceable signals**: GitHub `arlanrakh`, arlanrakh.com, recent YouTube interview, press in startupsunion / digitrendz / Yahoo Finance pitch-deck roundup
 
 ---
 
-## Pre-seeded data you need (the "specifics" you asked for)
+## How the demo is triggered (no hotkeys, no fakery)
 
-Hardcode these into `web/src/mock/data.ts` (or a new `mock/demo-nozomio.ts`) and into the Electron HUD's signal stream.
+The HUD has live screen capture. Once we **skip the LLM classifier** in `src/suggest/vision-signal.js` and use raw substring matching on the OCR'd caption text, detection is deterministic.
 
-### 1. Behavioral prior on "you" (the partner running this demo)
+**Trigger keywords (all OR'd, case-insensitive substring on caption text):**
 
-Pre-seed memory so Shadow already "knows" you when the demo starts. Your profile is a **conviction-led technical investor** — you back young, obsessed founders. You will say YES on Arlan. The critiques (solo founder, hot round, no GTM) come from *other* partners' shadows — that's the demo's productive tension.
+`arlan` · `linkedin` · `nozomio` · `rakhmetzhanov` · `deck` · `.pdf` · `slide`
 
-- weight: **strong technical-founder bias** (+heavy on shipping history)
-- weight: **rewards conviction-driven young founders** — you've backed teen / college-age technical founders before
-- weight: likes **dev-tools / infra / AI-infra** category
-- weight: tolerates solo founders if they're shipping (you don't share the firm's solo-skepticism)
-- flag-pattern: always asks "why now" on infra timing
-- flag-pattern: checks whether the founder personally shipped vs. managed
-- 3 prior memos in your voice (brief) on adjacent infra deals — used to make the thesis sound like you
+State machine, two stages — same trigger list, different acts based on which stage we're in:
 
-### 2. **THE HEADLINE — an existing sourcing sheet from another analyst**
+- **Stage 1 (initial)**: any keyword match → fire Act 1 timeline once, advance state
+- **Stage 2 (post-Act-1)**: any keyword match → fire Act 2 timeline once
 
-The moment you load Arlan's YC page, Shadow recognizes the company and surfaces a link to a **sourcing sheet that Analyst D already created two weeks ago**. This is the "our firm has already done some of this work" moment, and it reuses the existing sourcing-sheet component — no new artifact type to build.
+Hotkey fallback (e.g. ⌘⇧D) injects the same scripted timeline directly, in case stage lighting / OCR misses everything.
 
-The card looks like an existing-artifact chip in the HUD: `[ ◐ existing sourcing sheet · Analyst D · 2 wks ago → ]`
+Pacing: ~2–4s pause between detection and first thought (so it feels like Shadow is reading, not magic). Thoughts pulse out every 3–5s, not in one burst.
 
-Clicking it opens the full sourcing sheet (same layout as the one we generate later) with Analyst D's avatar and timestamp on it. They've covered the basics: company, round, team, public news. They have **not** done the firm-memory cross-references, the personalized verdict, or the IC-style thesis. That's the gap your shadow will fill.
+**Memo links + artifact links inside the HUD point to `http://localhost:<webPort>`** (the local web app) — so the firm-brain handoff opens our running app, not anything external.
 
-This sets up the contrast in Act 2: analyst sheet = facts; your shadow = *judgment in your voice*.
+---
 
-### 3. The "unique insight" Shadow surfaces when you open the YC page
+## Pre-seeded data
 
-Not a news summary. Something an associate would dig up — appears as a separate pill alongside the email-thread surface:
+All in `web/src/mock/data.ts` (extend the existing nozomio shape) + a new `src/renderer/demo-nozomio-timeline.js` for the HUD scripted thought stream.
 
-- **Hook**: "Arlan's Stanford research project (Cobra) was a code-analysis tool — Nozomio is a commercial generalization of his own undergrad research. This isn't a pivot, it's 4 years of consistent obsession."
-- Shows up as a HUD pill: `[ insight: Cobra → Nia lineage → ]`
+### A. Behavioral prior on "you"
 
-### 4. Auto-attached Slack threads (2)
+- conviction-led technical investor; backs young, obsessed founders
+- strong technical-founder bias; rewards shipping history
+- likes dev-tools / infra / AI-infra
+- tolerates solo founders if they're shipping
+- always asks "why now" on infra timing
+- checks whether the founder personally shipped vs. managed
+- comms style: lowercase, direct, anti-formality (apply this to every artifact written "in your voice")
 
-- Thread #1: 3 weeks old, channel `#sourcing`, partner A pasted the TechCrunch Nia launch link with comment *"this is the thing I was talking about re: agent context"*
-- Thread #2: 1 week old, channel `#deals-q2`, partner C asked *"anyone met arlan? heard PG re-upped"*
-- Both surface inline on the sourcing sheet with click-through
+### B. Past comps in your "history" (so the memo can cite them)
 
-### 5. Firm verdicts — five teammate shadows vote on your thesis
+Default: **Pinecone (March visit)** + **Modal (Feb visit)**. Both context-layer / dev-infra plays; both pattern-match Nozomio's wedge. Swap names if you want.
 
-Five shadows, distinct behavioral tendencies, all vote the moment you submit your investment thesis + personalized verdict. The headline outcome: **3 against, 2 for.** This is the punchline — your firm just held an instant IC without anybody being in a room.
+### C. Two people in your network who know Arlan
 
-| Shadow | Behavioral tendency | Vote | One-line reasoning |
+- **Sarah Chen** — overlapped with Arlan at Stanford AI lab, can warm-intro
+- **Marcus Liu** — angel in Cobra, knows Arlan's technical chops firsthand
+
+### D. The five firm shadows (reuse existing teammates)
+
+Mapping to `teammates` already in `web/src/mock/data.ts`:
+
+| Shadow | Behavioral tendency | Vote | One-liner |
 |---|---|---|---|
-| **Partner A** (operator-first) | weights GTM execution, distrusts research-y founders | AGAINST | "academic origins worry me, no enterprise GTM signal yet" |
-| **Partner B** (thesis-driven, infra) | bullish on dev-tools infra category | FOR | "this is the wedge — research moat + bottom-up dev distribution" |
-| **Partner C** (founder-pattern matcher) | weights repeat-founder track record | AGAINST | "solo, 18, no prior infra ship — doesn't match our winners" |
-| **Partner D** (price-sensitive) | hates entry valuations >$50M post for unproven GTM | AGAINST | "round is hot. PG + Wolf-driven. we'd be buying the hype, not the company" |
-| **Partner E** (contrarian, early-bet) | rewards conviction in young founders | FOR | "Cobra→Nia is real conviction. ignore the round noise." |
+| **Sarah K.** (operator-first) | weights GTM execution, distrusts research-y founders | AGAINST | "academic origins worry me, no enterprise GTM signal yet" |
+| **Jin P.** (thesis-driven, infra) | bullish on dev-tools infra | FOR | "this is the wedge — research moat + bottom-up dev distribution" |
+| **Marcus T.** (founder-pattern matcher) | weights repeat-founder track record | AGAINST | "solo, 18, no prior infra ship — doesn't match our winners" |
+| **Linda R.** (price-sensitive) | hates entry valuations >$50M post for unproven GTM | AGAINST | "round is hot. PG + Wolf-driven. we'd be buying the hype, not the company" |
+| **Henry C.** (contrarian, early-bet) | rewards conviction in young founders | FOR | "Cobra→Nia is real conviction. ignore the round noise." |
 
-Consensus: **3 against / 2 for** → punchline: *"five partners just held an IC in two seconds. would have been a 90-minute meeting."*
+**Final tally: 3 AGAINST · 2 FOR.**
 
-### 6. The artifacts to pre-render (or generate on click with canned content)
+Each shadow has a canned chat reply for ~2 prompts each, in their voice. Linda R.'s key line (most-likely click target): *"$30M post or below, with a technical co-founder added. above that we're paying for PG and Wolf, not for the company."*
 
-All of these need to look polished even if the click is fake:
+### E. Artifacts to pre-seed (rendered on demand from canned content)
 
-- **Existing sourcing sheet by Analyst D** (Nozomio basics, real public facts, Analyst D's avatar/timestamp)
-- **Investment thesis — Nozomio** in your voice, **bullish**: 3 paragraphs — (1) why now in dev-infra context layer, (2) why Arlan specifically (Cobra→Nia 4-year obsession, shipped Cobra, prior 20k-user startup), (3) why the obvious objections (solo, age, hot round) don't kill it for you
-- **Personalized deal verdict** in your voice: **INVEST** · conviction high · suggested check $2M · top 3 reasons for, brief acknowledgment of risks but framed as monitorable — not blockers
-- **Firm vote card** — 5 avatars, FOR/AGAINST chips, expandable to per-shadow reasoning
+1. **Source sheet — Nozomio** (created in Act 1 off the LinkedIn page). Contents:
+   - Public news links: TechCrunch Nia launch, Yahoo Finance pitch-deck roundup, startupsunion, digitrendz
+   - X activity: recent posts, follower spike post-launch
+   - GitHub `arlanrakh`: repo list, commit cadence, top languages
+   - Cobra Stanford research paper + Caltech advisor
+   - Prior 20k-user startup at age 15
+   - Forbes 30u30, YC S25, $6.2M seed, CRV / PG / Wolf
+   - "people you know who know him": Sarah Chen, Marcus Liu (with how they know him)
+   - Comp note: *"reads like Pinecone (march visit) — same context-layer wedge, earlier stage"*
+
+2. **Investment memo — Nozomio** (created in Act 2 from the deck). In your voice (lowercase, direct):
+   - **comp paragraph**: explicit references to Pinecone (March) and Modal (Feb) — same context-layer thesis, earlier stage, more technical founder
+   - **what i like** — pulled straight from your behavioral profile: technical founder who ships (Cobra→Nia lineage), conviction signal, young-founder bias, dev-infra wedge timing
+   - **what gives me pause** — also from your profile: solo founder (i usually tolerate), hot round (i usually avoid), no GTM yet
+   - **verdict**: invest · conviction high · suggested check $2M
+   - footer: `[ get shadows' opinions → ]` button
+
+3. **Intro email to Arlan** (created in Act 2). In your voice — short, lowercase, no formalities, no "Dear Arlan / Best regards". Two sharp questions:
+   - one on Cobra→Nia technical lineage
+   - one on CRV's terms / what's still open in the round
+
+Both artifacts auto-append to the **Related Artifacts** list on the deal — so the panel visibly grows from 1 (source sheet) → 2 (+memo) → 3 (+email) over the demo.
 
 ---
 
 ## The 3-minute script
 
-Format: `[what you say] / (what's on screen)`.
+Format: `[time] — [what's on screen] / "what you say"`.
 
 ### Beat 0 · Open (5s)
 
-> "I'm pretending to be a VC. I'm about to look at a real YC company — Nozomio — and Shadow is going to watch me work."
+> "i'm pretending to be a vc. i'm about to look at a real yc founder — arlan, nozomio — and shadow is going to watch me work. nothing on screen is faked except the speed."
 
-(HUD visible bottom-right, idle. Browser open.)
+(HUD visible bottom-right, idle. Browser open to a neutral tab.)
 
-### Act 1 · Recognition + existing analyst sheet (45s)
+### Act 1 · LinkedIn → source sheet (60s)
 
-**0:05** — Open `ycombinator.com/companies/nozomio`.
+**0:05** — open `linkedin.com/in/arlanrakh` (or the closest real URL). HUD detects "linkedin" + "arlan" → fires Stage 1 timeline.
 
-**0:08** — HUD writes appear:
+**0:08** — first thought:
 ```
-💾 recognized: Arlan Rakhmetzhanov · Nozomio · YC S25
-💾 cross-ref: firm has prior work on this company
-💾 updating: AI-infra category weight +4%
-```
-
-**0:15** — Two pills appear:
-```
-[ ◐ existing sourcing sheet · Analyst D · 2 wks ago → ]
-[ ◆ insight: Cobra → Nia lineage → ]
+💭 you seem to be looking at a new founder
+📝 Arlan Rakhmetzhanov · profile viewed
 ```
 
-> "Shadow recognizes this founder, and it's telling me one of our analysts already started a sourcing sheet on him."
-
-**0:22** — Click the existing-sheet pill. The sourcing sheet opens — Analyst D's avatar and timestamp at the top, basic facts filled in (round, team, public news), but no firm-memory cross-refs and no verdict.
-
-> "This is the basics. What it doesn't have is *my* take, or anybody else at the firm's take. Let's get there."
-
-**0:45** — Close. Back to YC page.
-
-### Act 2 · Personalized thesis + verdict (75s)
-
-**0:45** — Two new pills:
+**0:13** —
 ```
-[ write investment thesis → ]
-[ generate personalized deal verdict → ]
+💭 want me to put together a founder profile? i'll pull github, x, news, the cobra paper, his prior startup
+📝 cross-ref: similar to Pinecone, Modal lookups from last month
 ```
 
-**0:50** — Click `write investment thesis`. Thesis card slides in (~2s). Three short paragraphs in your voice — **bullish**:
-- *why now* on dev-infra context layer
-- *why Arlan specifically* — Cobra→Nia 4-year obsession, shipped Cobra at Stanford, prior 20k-user startup at 15
-- *why the obvious objections don't stop me* — solo + age + hot round are noise; conviction lineage is signal
+**0:18** — quick targeting questions (text in stream, not buttons — they auto-resolve in ~3s for stage):
+```
+💭 actually — 2 quick things first so this matches your read:
+   → angle: technical depth or market timing?
+   → comp set: dev-tools infra (pinecone / modal / replit)?
+```
 
-> "Read that — that sounds like me. I back young technical founders who ship. Shadow knows that."
+**0:24** — answers register, generation starts:
+```
+📝 angle: technical depth · comp set: dev-tools infra
+💭 pulling sources… give me a sec
+```
 
-**1:30** — Click `generate personalized deal verdict`. Verdict card slides in:
-- recommendation: **INVEST**
-- conviction: high
-- suggested check: $2M
-- top reasons FOR in your voice (Cobra lineage, ship signal, category timing)
-- risks acknowledged but framed as monitorable, not blockers
-- artifact-chip linking **Analyst D's sourcing sheet** rendered directly on the card
+**0:28** — source sheet card slides in inline. All sections populated (see §E.1). Related Artifacts panel updates: **1 artifact**.
 
-> "I'm in. That's my verdict. But I'm one partner — let's see what the rest of the firm thinks."
+> "no clicks. it watched me, asked me how to frame it, and pulled together what an analyst would have spent two hours on."
 
-**1:50** — At the bottom of the verdict card: `[ submit to firm shadows for vote ]`. Click it.
+**0:50** — final thought before you move on:
+```
+💭 also — 2 people in your network know arlan. surfaced in the sheet.
+📝 source sheet · Nozomio · saved
+```
+
+### Act 2 · Pitch deck → memo + intro email (75s)
+
+**1:05** — open `Nozomio_deck.pdf` (any PDF named to match — keyword `.pdf` + `nozomio` triggers Stage 2).
+
+**1:08** — HUD:
+```
+💭 you opened a deck — looks like you're getting ready for an ic meeting on this one
+💭 here's what i can put together for you:
+   📋 investment memo — your voice, references your past comps + your likes/dislikes
+   ✉️  intro email to arlan — your voice, 2 sharp questions
+```
+
+(Both surface as text in the thought stream and as artifact-create chips. Click each one.)
+
+**1:20** — click `📋 investment memo`. Memo card slides in (~2s) with full content (see §E.2). Lowercase, direct, references Pinecone + Modal explicitly. Footer: `[ get shadows' opinions → ]`. Related Artifacts: **2 artifacts**.
+
+> "read it. that sounds like me — lowercase, no fluff, names the comps i actually saw, calls out what i actually care about and what i actually shrug off."
+
+**1:50** — click `✉️ intro email`. Email card slides in. Same voice. Two sharp technical questions, no formalities. Related Artifacts: **3 artifacts**.
+
+> "and that's the email i'd actually send. not 'dear arlan, hope this finds you well.'"
+
+**2:10** — back on the memo card. Click `[ get shadows' opinions → ]`.
 
 → Sets up Act 3.
 
-### Act 3 · Firm shadow vote (60s)
+### Act 3 · Firm shadow vote + chat (50s)
 
-**2:00** — Vote panel slides in. 5 teammate avatars animate, each flips to FOR/AGAINST one by one over ~3 seconds.
+**2:15** — `get shadows' opinions` button is replaced by a link/chip that opens the local web app (`http://localhost:<port>/firm/nozomio`) to the deal page. Memo is there with all 5 shadows attached as reviewers.
 
-Final tally: **3 AGAINST · 2 FOR**
+**2:18** — 5 avatars animate in, each flips to FOR/AGAINST one by one over ~3s.
 
-> "I said yes. Three of my partners' shadows said no. In two seconds. That's the IC meeting that didn't have to happen."
+Final tally: **3 AGAINST · 2 FOR**.
 
-**2:15** — Click into the AGAINST column. Three one-line reasons surface:
-- Partner A (operator-first): "no GTM signal yet"
-- Partner C (founder-pattern): "solo, 18, no prior infra ship"
-- Partner D (price-sensitive): "round is hot, we'd be buying hype"
+> "i said yes. three of my partners' shadows said no. in two seconds. that's the ic meeting that didn't have to happen."
 
-**2:30** — Click Partner D's avatar — strongest dissent. Open D's shadow chat.
+**2:30** — click into the AGAINST column. Three one-liners surface (see §D).
+
+**2:40** — click **Linda R.** (price-sensitive — strongest dissent). Chat panel opens.
 > Type: "what valuation would change your mind?"
 
-Pre-canned reply in D's voice: *"$30M post or below, with a technical co-founder added. Above that we're paying for PG and Wolf, not for the company."*
+Pre-canned reply in Linda's voice: *"$30m post or below, with a technical co-founder added. above that we're paying for PG and Wolf, not for the company."*
 
-**2:50** — Step back to the vote view. Surface a "firm consensus" line: **INVESTIGATE — pursue if co-founder added or terms come in.**
+**2:55** — step back. Surface a "firm consensus" line: **INVESTIGATE — pursue if co-founder added or terms come in.**
 
-> "That's five partners' worth of judgment. On every deal. Forever. The meeting we just skipped would have been ninety minutes."
+> "five partners' worth of judgment. on every deal. forever. the meeting we just skipped would have been ninety minutes."
 
-**3:00** — End.
+**3:00** — end.
 
 ---
 
-## Files that need to change to make this play deterministically
+## Files that need to change
 
-You said hardcoded-for-now is fine, so the cheapest path:
+- `src/suggest/vision-signal.js` — add a "demo keyword shortcut" path: if caption text contains any of the trigger keywords (substring, case-insensitive), bypass the LLM classifier and emit a deterministic signal. Wire a feature flag or env var so this can be toggled for stage.
+- `src/renderer/renderer.js` — add a `demo-nozomio-timeline.js` module: an array of `{atMs, action}` events for both stages. Subscribe to vision signals, advance the state machine, fire timeline.
+- `src/main.js` — wire a hotkey (⌘⇧D) that force-fires the next stage of the timeline (fallback if vision misses).
+- `web/src/mock/data.ts` — add the `nozomio` deal: source-sheet content, memo content, intro-email content, 5 shadow profiles with vote + one-liner + canned chat replies.
+- `web/src/components/firm/DealDetail.tsx` — confirm the deal page renders the memo with attached shadows + vote tally + clickable avatars opening a chat panel. Add the chat-with-shadow surface if it's not there.
+- `web/src/components/MyArtifacts.tsx` (or whichever renders Related Artifacts) — make it reactive so newly-created artifacts append visibly during the demo.
 
-- `web/src/mock/data.ts` — add a `nozomio` deal containing:
-  - Analyst D's existing sourcing sheet (basics-only, attributed to D)
-  - investment thesis artifact (3 paragraphs, your voice)
-  - personalized deal verdict artifact (with Analyst D's sheet auto-attached as a "pulled from" chip)
-  - 5 teammate-shadow profiles (A/B/C/D/E) with vote + one-line reasoning + canned chat replies
-  - 2 Slack threads (kept, but secondary now)
-- All artifacts reuse existing components — `ArtifactCard.tsx`, `Avatars.tsx`, `VerdictPill.tsx`, `SourceChips.tsx`. **No new components required.**
-- Auto-link rule for the artifacts list: when the verdict is generated, it must show Analyst D's sourcing sheet as a linked artifact-chip on the card itself, not just in a "pulled from" footer. Same for the IC memo / thesis if regenerated later.
-- `web/src/mock/data.ts` — add 3 teammate-shadow profiles (A/B/C) with distinct tendencies + canned chat replies for the two prompts in Act 3
-- `web/src/components/firm/` — confirm there's a chat-with-teammate-shadow surface; if not, smallest-possible addition (single component reading from the canned reply map)
-- `src/renderer/renderer.js` (Electron HUD) — a "demo mode" timeline: trigger memory writes and pill appearances on a timer the moment you press a hotkey. Keep it dumb: an array of `{atMs, action}` events.
-- `src/main.js` — wire a global hotkey (e.g. ⌘⇧D) that starts the demo timeline. Lets you kick it off from stage without touching the laptop visibly.
-
-Avoid: building real screen capture / vision / mic for stage. The demo is about behavior, not plumbing — fake signal stream is fine.
+Reuse existing components everywhere possible. No new artifact types.
 
 ---
 
 ## Verification before stage
 
 1. Run Electron app + web app side-by-side on the demo laptop.
-2. Hit the demo hotkey with the YC Nozomio page already open in the browser.
-3. Walk the full 3-minute script end-to-end **twice** with a stopwatch. The 90-second analyst-work act is the one most likely to overrun.
-4. Test with the laptop unplugged from external display once — projector reflows can break the HUD position; pin the HUD to fixed pixel coords for stage resolution.
-5. Have a fallback: if the HUD glitches, you can still walk the firm-brain tab in the web app alone — Act 3 stands on its own.
-
----
-
-## Open questions before building
-
-- Real teammate names/avatars for Partners A–E, or made-up?
-- I'll write all the canned copy (thesis, verdict, 5 vote reasonings, Partner D chat reply) directly into mock data on the worktree.
+2. Open `linkedin.com/in/arlanrakh` (or fallback URL). Confirm HUD picks up "linkedin" / "arlan" within 5s.
+3. Open `Nozomio_deck.pdf` (any PDF named that way). Confirm Stage 2 fires.
+4. Walk the full 3-minute script end-to-end **twice** with a stopwatch. Act 2 (75s) is the most likely overrun — practice the click-and-talk pacing.
+5. Test once with the laptop unplugged from external display — projector reflows can break HUD position; pin to fixed pixel coords for stage resolution.
+6. Confirm the `get shadows' opinions` button's link resolves to the local web app port that's actually running on stage (`localhost:<port>`), not a hardcoded dev port.
+7. Fallback: hotkey ⌘⇧D force-fires whichever stage is next. If vision misses entirely, you can drive the whole demo from the keyboard and nobody knows.
 
 ---
 
 ## TL;DR — the demo in 6 lines
 
-1. Open Arlan's YC page. Shadow recognizes him + the company.
-2. A pill surfaces an **existing sourcing sheet by Analyst D**. Click → real public Nozomio facts already pulled.
-3. Click `write investment thesis` → 3 paragraphs in your voice, **bullish on Arlan** (Cobra→Nia lineage, ship signal, you back young technical founders).
-4. Click `generate personalized deal verdict` → **INVEST**, $2M, conviction high. Analyst D's sheet auto-linked as an artifact-chip on the card.
-5. Submit to firm shadows. 5 avatars vote in 2s: **3 AGAINST · 2 FOR.** Each dissent shows a one-liner in that partner's voice (solo founder / GTM gap / valuation too hot / pattern mismatch).
-6. Click into Partner D (price-sensitive) — or **any** of the 5 avatars — to open a chat window with that partner's shadow. Each has canned replies in their own voice. Close: *"that's the IC meeting we just skipped."*
-
----
-
-## Build target
-
-Create a git worktree off `main`, do all demo work there. Reuse existing components only. New mock data + a global hotkey to play the timeline. No new artifact components. Chat-with-any-shadow surface is wired into every avatar in the firm vote view.
+1. Open Arlan's LinkedIn. HUD detects, surfaces thoughts (no clicks), asks 2 framing questions, pulls together a source sheet with news / X / GitHub / network intros / comp note. Related Artifacts: 1.
+2. Open Arlan's pitch deck PDF. HUD: *"looks like you're getting ready for an IC meeting"* + 2 artifact suggestions: investment memo + intro email.
+3. Click memo → renders in your voice (lowercase, blunt), explicitly references Pinecone + Modal as past comps, lists what you like / what gives you pause from your behavioral profile, verdict INVEST $2M. Footer: `[ get shadows' opinions ]`.
+4. Click intro email → renders in your voice (lowercase, no formalities, 2 sharp questions). Related Artifacts: 3.
+5. Click `get shadows' opinions` on the memo → button becomes a link to the local web app deal page. 5 shadows vote in 2s: **3 AGAINST · 2 FOR**.
+6. Click any avatar → chat with that shadow in their own voice. Close on Linda R.: *"that's the ic meeting we just skipped."*

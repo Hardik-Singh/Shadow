@@ -3,27 +3,38 @@ import Header from './components/Header';
 import MyShadowTab from './components/MyShadowTab';
 import FirmBrainTab from './components/firm/FirmBrainTab';
 import AutonomousTab from './components/autonomous/AutonomousTab';
+import ArtifactPage from './components/ArtifactPage';
 import { PartnerChatProvider } from './components/PartnerChat';
-import { Artifact, View, deals, artifacts } from './mock/data';
+import { Artifact, View, deals } from './mock/data';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { runDemoAction } from './lib/artifacts-api';
 
-function readDeepLink(): { view: View; artifactId: string | null; dealId: string | null } {
+type AppView = View | 'artifact';
+
+function readDeepLink(): { view: AppView; artifactSlug: string | null; artifactId: string | null; dealId: string | null } {
   const p = new URLSearchParams(window.location.search);
+  const m = window.location.pathname.match(/^\/artifact\/([a-z0-9-]+)$/);
+  if (m) {
+    return { view: 'artifact', artifactSlug: m[1], artifactId: null, dealId: null };
+  }
+  if (window.location.pathname === '/firm/nozomio') {
+    return { view: 'firm', artifactSlug: null, artifactId: null, dealId: 'd6' };
+  }
   const dealId = p.get('deal');
   const artifactId = p.get('artifact');
   if (dealId && deals.find((d) => d.id === dealId)) {
-    return { view: 'firm', artifactId: null, dealId };
+    return { view: 'firm', artifactSlug: null, artifactId: null, dealId };
   }
-  if (artifactId && artifacts.find((a) => a.id === artifactId)) {
-    return { view: 'mine', artifactId, dealId: null };
+  if (artifactId) {
+    return { view: 'mine', artifactSlug: null, artifactId, dealId: null };
   }
   if (p.get('view') === 'firm') {
-    return { view: 'firm', artifactId: null, dealId: null };
+    return { view: 'firm', artifactSlug: null, artifactId: null, dealId: null };
   }
   if (p.get('view') === 'autonomous') {
-    return { view: 'autonomous', artifactId: null, dealId: null };
+    return { view: 'autonomous', artifactSlug: null, artifactId: null, dealId: null };
   }
-  return { view: 'mine', artifactId: null, dealId: null };
+  return { view: 'mine', artifactSlug: null, artifactId: null, dealId: null };
 }
 
 const RESOLVED_BY_KIND: Record<string, Partial<Artifact>> = {
@@ -66,9 +77,10 @@ const RESOLVED_BY_KIND: Record<string, Partial<Artifact>> = {
 
 export default function App() {
   const initial = readDeepLink();
-  const [view, setView] = useState<View>(initial.view);
+  const [view, setView] = useState<AppView>(initial.view);
   const [focusedDealId, setFocusedDealId] = useState<string | null>(initial.dealId);
   const [openArtifactId, setOpenArtifactId] = useState<string | null>(initial.artifactId);
+  const [artifactSlug, setArtifactSlug] = useState<string | null>(initial.artifactSlug);
   const [pending, setPending] = useState<Artifact[]>([]);
 
   useEffect(() => {
@@ -77,12 +89,13 @@ export default function App() {
       setView(next.view);
       setFocusedDealId(next.dealId);
       setOpenArtifactId(next.artifactId);
+      setArtifactSlug(next.artifactSlug);
     };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, []);
 
-  const handleNew = (kind: string) => {
+  const handleNew = async (kind: string) => {
     const id = `gen-${Date.now()}`;
     const stub: Artifact = {
       id,
@@ -101,12 +114,28 @@ export default function App() {
     setPending((p) => [stub, ...p]);
     setView('mine');
 
+    const apiArtifact = await runDemoAction(kind);
+    if (apiArtifact) {
+      setPending((p) =>
+        p.map((a) => (a.id === id ? apiArtifact : a)),
+      );
+      return;
+    }
+
     setTimeout(() => {
       const resolved = RESOLVED_BY_KIND[kind] ?? RESOLVED_BY_KIND['IC memo'];
       setPending((p) =>
         p.map((a) =>
           a.id === id
-            ? { ...a, ...resolved, status: 'final', time: 'just now' } as Artifact
+            ? {
+                ...a,
+                ...resolved,
+                bodyKind: 'html',
+                body: `<p>${resolved.body ?? ''}</p>`,
+                flags: ['local demo fallback: Electron API was not reachable'],
+                status: 'final',
+                time: 'just now',
+              } as Artifact
             : a,
         ),
       );
@@ -124,26 +153,37 @@ export default function App() {
     setView(v);
     if (v === 'mine') setFocusedDealId(null);
     setOpenArtifactId(null);
+    setArtifactSlug(null);
     const params = new URLSearchParams(window.location.search);
     params.set('view', v);
     if (v !== 'firm') { params.delete('section'); params.delete('deal'); }
-    window.history.replaceState({}, '', `?${params.toString()}`);
+    window.history.replaceState({}, '', `/?${params.toString()}`);
   };
+
+  const headerView: View = view === 'artifact' ? 'mine' : view;
 
   return (
     <TooltipProvider delayDuration={150}>
       <PartnerChatProvider>
         <div className="min-h-screen bg-background">
-          <Header view={view} onViewChange={onChangeView} onNew={handleNew} />
-          {view === 'mine' && (
+          <Header view={headerView} onViewChange={onChangeView} onNew={handleNew} />
+          {view === 'artifact' ? (
+            <ArtifactPage
+              artifactSlugOrId={artifactSlug ?? ''}
+              onBack={() => onChangeView('mine')}
+              onOpenInFirm={onOpenInFirm}
+            />
+          ) : view === 'mine' ? (
             <MyShadowTab
               onOpenInFirm={onOpenInFirm}
               initialArtifactId={openArtifactId}
               pending={pending}
             />
+          ) : view === 'firm' ? (
+            <FirmBrainTab focusedDealId={focusedDealId} />
+          ) : (
+            <AutonomousTab />
           )}
-          {view === 'firm' && <FirmBrainTab focusedDealId={focusedDealId} />}
-          {view === 'autonomous' && <AutonomousTab />}
         </div>
       </PartnerChatProvider>
     </TooltipProvider>

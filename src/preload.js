@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('shadow', {
   onStatus: (cb) => ipcRenderer.on('signal:status', (_e, t) => cb(t)),
   onWrite: (cb) => ipcRenderer.on('signal:write', (_e, row) => cb(row)),
   onThought: (cb) => ipcRenderer.on('signal:thought', (_e, t) => cb(t)),
+  onNozomioDemo: (cb) => ipcRenderer.on('demo:nozomio', (_e, payload) => cb(payload)),
   openInDashboard: (qs) => ipcRenderer.invoke('shadow:open-dashboard', qs),
   setFocus: (text) => ipcRenderer.send('shadow:set-focus', text),
   ask: (text) => ipcRenderer.send('shadow:ask', text),
